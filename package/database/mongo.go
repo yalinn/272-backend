@@ -12,8 +12,10 @@ import (
 )
 
 var (
-	Mongo *mongo.Database
-	Auths *mongo.Collection
+	Mongo       *mongo.Database
+	Users       *mongo.Collection
+	Suggestions *mongo.Collection
+	Rejections  *mongo.Collection
 )
 
 func init() {
@@ -32,5 +34,7 @@ func init() {
 			log.Println("Successfully connected to MongoDB!")
 		}
 	}
-	Auths = Mongo.Collection("Auths")
+	Users = Mongo.Collection("users")
+	Suggestions = Mongo.Collection("suggestions")
+	Rejections = Mongo.Collection("rejections")
 }

@@ -1,18 +1,12 @@
 package app
 
 import (
-	db "272-backend/package/database"
-	"context"
-	"encoding/json"
-	"log"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/session"
 
 	"github.com/gofiber/swagger"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 type FormT struct {
@@ -37,7 +31,7 @@ func init() {
 			AllowHeaders: "Origin, Content-Type, Accept",
 		}),
 		logger.New(),
-		getSession,
+		/* getSession, */
 	)
 	App.Get("/swagger/*", swagger.HandlerDefault) // default
 
@@ -57,6 +51,7 @@ func init() {
 
 }
 
+/*
 func getSession(c *fiber.Ctx) error {
 	sess, err := SessionStore.Get(c)
 	if err != nil {
@@ -101,7 +96,7 @@ func getSession(c *fiber.Ctx) error {
 	}
 	return c.Next()
 }
-
+*/
 /* func isAuthorized(c *fiber.Ctx) error {
 	sess, err := SessionStore.Get(c)
 	if err != nil {
@@ -116,7 +111,7 @@ func getSession(c *fiber.Ctx) error {
 	return c.Next()
 }
 */
-
+/*
 func GetAuthDocumentByToken(token string) (FormT, error) {
 	var auth FormT
 	log.Println("App | GetAuthDocumentByToken | token: " + token + "")
@@ -135,3 +130,4 @@ func GetAuthDocumentByToken(token string) (FormT, error) {
 	}
 	return auth, nil
 }
+*/
