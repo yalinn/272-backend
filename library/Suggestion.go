@@ -43,16 +43,31 @@ func (s *Suggestion) InsertToDB() error {
 	if _, err := db.Suggestions.InsertOne(context.TODO(), suggestion); err != nil {
 		return err
 	}
+	if err := db.Suggestions.FindOne(context.TODO(), bson.M{"title": s.Title}).Decode(&s); err != nil {
+		return err
+	}
 	return nil
 }
 
-func FindSuggestionByID(id string) (Suggestion, error) {
+func GetSuggestion(id string) (Suggestion, error) {
 	var suggestion Suggestion
 	objID, _ := primitive.ObjectIDFromHex(id)
 	if err := db.Suggestions.FindOne(context.TODO(), bson.M{"_id": objID}).Decode(&suggestion); err != nil {
 		return Suggestion{}, err
 	}
 	return suggestion, nil
+}
+
+func GetSuggestions() ([]Suggestion, error) {
+	var suggestions []Suggestion
+	cursor, err := db.Suggestions.Find(context.TODO(), bson.M{})
+	if err != nil {
+		return nil, err
+	}
+	if err := cursor.All(context.TODO(), &suggestions); err != nil {
+		return nil, err
+	}
+	return suggestions, nil
 }
 
 func (s *Suggestion) GiveUpvote(userID string) error {
@@ -120,30 +135,23 @@ type Rejection struct {
 	Date       string             `json:"date" bson:"date"`
 }
 
-func (s *Suggestion) Reject(reasons []string, executorID string) error {
-	var totalStars int
-	var starCount int
-	for _, star := range s.Stars {
-		totalStars += star.Star
-		starCount++
-	}
-	average := 0
-	if starCount != 0 {
-		average = totalStars / starCount
-	}
+func (s *Suggestion) Reject(reasons []string, executorID string) (Rejection, error) {
 	rejection := Rejection{
 		Title:      s.Title,
 		Content:    s.Content,
 		AuthorID:   s.AuthorID,
 		Upvotes:    len(s.Upvotes),
-		Stars:      average,
+		Stars:      s.CalculateAverageStars(),
 		Tags:       s.Tags,
 		Reasons:    reasons,
 		ExecutorID: executorID,
 		Date:       time.Now().UTC().Format(time.RFC3339),
 	}
 	if _, err := db.Rejections.InsertOne(context.TODO(), rejection); err != nil {
-		return err
+		return Rejection{}, err
+	}
+	if err := db.Rejections.FindOne(context.TODO(), bson.M{"title": s.Title}).Decode(&rejection); err != nil {
+		return Rejection{}, err
 	}
 	update := bson.M{
 		"$set": bson.M{
@@ -154,7 +162,21 @@ func (s *Suggestion) Reject(reasons []string, executorID string) error {
 		"_id": s.ID,
 	}
 	if _, err := db.Suggestions.UpdateOne(context.TODO(), query, update); err != nil {
-		return err
+		return rejection, err
 	}
-	return nil
+	return rejection, nil
+}
+
+func (s *Suggestion) CalculateAverageStars() int {
+	totalStars := 0
+	starCount := 0
+	for _, star := range s.Stars {
+		totalStars += star.Star
+		starCount++
+	}
+	average := 0
+	if starCount != 0 {
+		average = totalStars / starCount
+	}
+	return average
 }

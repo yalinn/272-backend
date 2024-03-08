@@ -28,6 +28,9 @@ func (u *User) InsertToDB() error {
 	if _, err := db.Users.InsertOne(context.TODO(), user); err != nil {
 		return err
 	}
+	if err := db.Users.FindOne(context.TODO(), bson.M{"username": u.Username}).Decode(&u); err != nil {
+		return err
+	}
 	return nil
 }
 
