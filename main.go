@@ -5,7 +5,7 @@ import (
 
 	"272-backend/config"
 	"272-backend/package/app"
-	//_ "272-backend/routes"
+	_ "272-backend/routes"
 	//_ "272-backend/docs"
 )
 
