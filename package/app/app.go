@@ -9,13 +9,13 @@ import (
 	"github.com/gofiber/swagger"
 )
 
-type FormT struct {
+/* type FormT struct {
 	ID       string   `json:"id,omitempty" bson:"_id,omitempty"`
 	Username string   `json:"username" bson:"username"`
 	Password string   `json:"password" bson:"password"`
 	Roles    []string `json:"roles" bson:"roles"`
 	Token    string   `json:"token" bson:"token"`
-}
+} */
 
 var (
 	App          *fiber.App
