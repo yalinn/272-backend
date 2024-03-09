@@ -20,7 +20,7 @@ func UseJWT(route fiber.Router) {
 	}))
 }
 
-func CreateToken(claims *jwt.MapClaims) string {
+func CreateToken(claims jwt.MapClaims) string {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	t, err := token.SignedString([]byte(config.JWT_SECRET_KEY))
 	if err != nil {

@@ -17,11 +17,9 @@ var (
 )
 
 var (
-	EMAIL_FROM     string
-	EMAIL_PASSWORD string
-	SMTP_HOST      string
-	SMTP_PORT      string = "465"
-	IMAP_PORT      string = "993"
+	IMAP_S_HOST string
+	IMAP_T_HOST string
+	IMAP_PORT   string = "993"
 )
 
 func init() {
@@ -37,10 +35,8 @@ func init() {
 	JWT_SECRET_KEY = os.Getenv("JWT_SECRET_KEY")
 	PORT = os.Getenv("PORT")
 
-	EMAIL_FROM = os.Getenv("EMAIL_FROM")
-	EMAIL_PASSWORD = os.Getenv("EMAIL_PASSWORD")
-	SMTP_HOST = os.Getenv("SMTP_HOST")
-	SMTP_PORT = os.Getenv("SMTP_PORT")
+	IMAP_S_HOST = os.Getenv("IMAP_S_HOST")
+	IMAP_T_HOST = os.Getenv("IMAP_T_HOST")
 	IMAP_PORT = os.Getenv("IMAP_PORT")
 
 }
