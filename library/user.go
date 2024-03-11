@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"log"
+	"strings"
 
 	"github.com/emersion/go-imap/client"
 	"github.com/golang-jwt/jwt/v5"
@@ -25,12 +26,11 @@ type User struct {
 }
 
 func (u *User) InsertToDB() error {
-	if u.Email == "" || u.UserType == "" {
+	if u.Username == "" || u.UserType == "" {
 		return errors.New("INVALID_USER")
 	}
 	user := bson.M{
 		"username":  u.Username, // ""
-		"email":     u.Email,
 		"user_type": u.UserType,
 		"roles":     []string{u.UserType},
 		"token":     nil,
@@ -63,8 +63,8 @@ func (u *User) PutRoles(roles []string) error {
 func (u *User) FindUser() (*User, error) {
 	var user User
 	query := bson.M{
-		"username": u.Username,
-		"email":    u.Email,
+		"username":  u.Username,
+		"user_type": u.UserType,
 	}
 	if err := db.Users.FindOne(context.TODO(), query).Decode(&user); err != nil {
 		return nil, err
@@ -72,9 +72,9 @@ func (u *User) FindUser() (*User, error) {
 	return &user, nil
 }
 
-func (u *User) GetByEmail() error {
+func (u *User) GetByUsername() error {
 	query := bson.M{
-		"email":     u.Email,
+		"username":  u.Username,
 		"user_type": u.UserType,
 	}
 	if err := db.Users.FindOne(context.TODO(), query).Decode(&u); err != nil {
@@ -96,17 +96,18 @@ func (u *User) LoginByEmail(pwd string) error {
 		return err
 	}
 	defer Imap.Logout()
-	if err := Imap.Login(u.Email, pwd); err != nil {
+	username := strings.Split(u.Email, "@")[0]
+	if err := Imap.Login(username, pwd); err != nil {
 		return err
 	}
 	defer Imap.Logout()
+	u.Username = username
 	token := jwts.CreateToken(jwt.MapClaims{
-		"email": u.Email,
-		"role":  u.Roles,
+		"username": username,
+		"role":     u.Roles,
 	})
-	if err := u.GetByEmail(); err != nil {
+	if err := u.GetByUsername(); err != nil {
 		u.Roles = []string{u.UserType}
-		u.Username = u.Email
 		u.InsertToDB()
 	}
 	u.Token = token

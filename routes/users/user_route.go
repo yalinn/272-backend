@@ -2,12 +2,14 @@ package users
 
 import (
 	"272-backend/package/app"
+	jwts "272-backend/package/jwt"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 func init() {
 	userRoutes := app.App.Group("/users")
+	jwts.UseJWT(userRoutes)
 	userRoutes.Get("/", getUsers)
 	userRoutes.Get("/:id", getUser)
 	// userRoutes.Post("/", register)
