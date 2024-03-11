@@ -107,9 +107,9 @@ func (u *User) LoginByEmail(pwd string) error {
 	if err := u.GetByEmail(); err != nil {
 		u.Roles = []string{u.UserType}
 		u.Username = u.Email
-		u.Token = token
 		u.InsertToDB()
 	}
+	u.Token = token
 	if err := u.SetToken(token); err != nil {
 		return err
 	}
