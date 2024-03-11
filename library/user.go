@@ -6,6 +6,7 @@ import (
 	jwts "272-backend/package/jwt"
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"log"
 	"strings"
@@ -29,10 +30,15 @@ func (u *User) InsertToDB() error {
 	if u.Username == "" || u.UserType == "" {
 		return errors.New("INVALID_USER")
 	}
+	token := jwts.CreateToken(jwt.MapClaims{
+		"username": u.Username,
+		"role":     u.Roles,
+	})
 	user := bson.M{
-		"username":  u.Username, // ""
+		"username":  u.Username,
 		"user_type": u.UserType,
-		"token":     u.Token,
+		"token":     token,
+		"roles":     []string{u.UserType},
 	}
 	if _, err := db.Users.InsertOne(context.TODO(), user); err != nil {
 		return err
@@ -101,15 +107,13 @@ func (u *User) LoginByEmail(pwd string) error {
 	}
 	defer Imap.Logout()
 	u.Username = username
-	token := jwts.CreateToken(jwt.MapClaims{
-		"username": username,
-		"role":     u.Roles,
-	})
 	if err := u.GetByUsername(); err != nil {
-		u.Roles = []string{u.UserType}
-		u.Token = token
 		u.InsertToDB()
 	}
+	token := jwts.CreateToken(jwt.MapClaims{
+		"username": username,
+		"roles":    u.Roles,
+	})
 	if err := u.SetToken(token); err != nil {
 		return err
 	}
@@ -134,4 +138,9 @@ func (u *User) SetToken(token string) error {
 		return err
 	}
 	return nil
+}
+
+func (u *User) Stringify() string {
+	out, _ := json.Marshal(u.Roles)
+	return string(out)
 }

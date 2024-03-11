@@ -3,6 +3,7 @@ package session
 import (
 	"272-backend/library"
 	"272-backend/package/app"
+	db "272-backend/package/database"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -63,6 +64,11 @@ func login(c *fiber.Ctx) error {
 		})
 	}
 	session.Set("token", user.Token)
+	if err := db.Redis.Set(user.Token, user.Stringify()); err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"message": "Failed to save token to redis",
+		})
+	}
 	if err := session.Save(); err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"message": "Failed to save session",
@@ -71,6 +77,7 @@ func login(c *fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{
 		"token": user.Token,
+		"user":  user.Stringify(),
 	})
 }
 
