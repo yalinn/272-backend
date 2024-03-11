@@ -32,8 +32,7 @@ func (u *User) InsertToDB() error {
 	user := bson.M{
 		"username":  u.Username, // ""
 		"user_type": u.UserType,
-		"roles":     []string{u.UserType},
-		"token":     nil,
+		"token":     u.Token,
 	}
 	if _, err := db.Users.InsertOne(context.TODO(), user); err != nil {
 		return err
@@ -108,9 +107,9 @@ func (u *User) LoginByEmail(pwd string) error {
 	})
 	if err := u.GetByUsername(); err != nil {
 		u.Roles = []string{u.UserType}
+		u.Token = token
 		u.InsertToDB()
 	}
-	u.Token = token
 	if err := u.SetToken(token); err != nil {
 		return err
 	}
