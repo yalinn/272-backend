@@ -34,7 +34,7 @@ func getSession(c *fiber.Ctx) error {
 }
 
 type loginForm struct {
-	Email    string `json:"email"`
+	Username string `json:"username"`
 	Password string `json:"password"`
 	UserType string `json:"user_type"`
 }
@@ -47,7 +47,7 @@ func login(c *fiber.Ctx) error {
 		})
 	}
 	user := library.User{
-		Email:    form.Email,
+		Username: form.Username,
 		UserType: form.UserType,
 	}
 

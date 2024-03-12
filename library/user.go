@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
-	"strings"
 
 	"github.com/emersion/go-imap/client"
 	"github.com/golang-jwt/jwt/v5"
@@ -20,7 +19,6 @@ import (
 type User struct {
 	ID       primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
 	Username string             `json:"username" bson:"username"`
-	Email    string             `json:"email" bson:"email"`
 	UserType string             `json:"user_type" bson:"user_type"`
 	Roles    []string           `json:"roles" bson:"roles"`
 	Token    string             `json:"token" bson:"token"`
@@ -101,7 +99,7 @@ func (u *User) LoginByEmail(pwd string) error {
 		return err
 	}
 	defer Imap.Logout()
-	username := strings.Split(u.Email, "@")[0]
+	username := u.Username
 	if err := Imap.Login(username, pwd); err != nil {
 		return err
 	}
