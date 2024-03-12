@@ -1,11 +1,14 @@
 package app
 
 import (
+	"encoding/json"
+
+	db "272-backend/package/database"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/session"
-
 	"github.com/gofiber/swagger"
 )
 
@@ -131,3 +134,21 @@ func GetAuthDocumentByToken(token string) (FormT, error) {
 	return auth, nil
 }
 */
+
+func GetRoles(c *fiber.Ctx) []string {
+	sess, err := SessionStore.Get(c)
+	if err != nil {
+		return []string{}
+	}
+	token := sess.Get("token")
+	rolesString, err := db.Redis.Get(token.(string))
+	if err != nil {
+		return []string{}
+	}
+	var roles []string
+	err = json.Unmarshal([]byte(rolesString), &roles)
+	if err != nil {
+		return []string{}
+	}
+	return roles
+}
