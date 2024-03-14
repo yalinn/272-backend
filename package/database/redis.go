@@ -27,7 +27,7 @@ func (db RedisInstance) Del(keys ...string) error {
 	return err
 }
 func (db RedisInstance) Set(key string, value interface{}) error {
-	err := db.Client.Set(db.ctx, key, value, 0).Err()
+	err := db.Client.Set(db.ctx, key, value, time.Duration(24)*time.Hour).Err()
 	return err
 }
 func (db RedisInstance) Expire(key string, expiration time.Duration) error {

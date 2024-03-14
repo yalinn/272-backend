@@ -28,8 +28,23 @@ func getSession(c *fiber.Ctx) error {
 			"message": "Unauthorized",
 		})
 	}
+	user := library.User{
+		Token: token.(string),
+	}
+	if err := user.InitToken(); err != nil {
+		return c.Status(401).JSON(fiber.Map{
+			"message": "Unauthorized",
+			"error":   "Invalid token",
+			"context": err.Error(),
+		})
+	}
 	return c.JSON(fiber.Map{
 		"token": token,
+		"user": fiber.Map{
+			"username":  user.Username,
+			"user_type": user.UserType,
+			"roles":     user.Roles,
+		},
 	})
 }
 
@@ -67,17 +82,23 @@ func login(c *fiber.Ctx) error {
 	if err := db.Redis.Set(user.Token, user.Stringify()); err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"message": "Failed to save token to redis",
+			"error":   err.Error(),
 		})
 	}
 	if err := session.Save(); err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"message": "Failed to save session",
+			"error":   err.Error(),
 		})
 	}
 
 	return c.JSON(fiber.Map{
 		"token": user.Token,
-		"user":  user.Stringify(),
+		"user": fiber.Map{
+			"username":  user.Username,
+			"user_type": user.UserType,
+			"roles":     user.Roles,
+		},
 	})
 }
 

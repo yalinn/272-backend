@@ -139,6 +139,17 @@ func (u *User) SetToken(token string) error {
 }
 
 func (u *User) Stringify() string {
-	out, _ := json.Marshal(u.Roles)
+	out, _ := json.Marshal(u)
 	return string(out)
+}
+
+func (u *User) InitToken() error {
+	us, err := db.Redis.Get(u.Token)
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal([]byte(us), &u); err != nil {
+		return err
+	}
+	return nil
 }
