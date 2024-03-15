@@ -4,9 +4,9 @@ import (
 	"github.com/gofiber/fiber/v2/log"
 
 	"272-backend/config"
+	_ "272-backend/docs"
 	"272-backend/package/app"
 	_ "272-backend/routes"
-	//_ "272-backend/docs"
 )
 
 // @title Fiber Example API
@@ -17,7 +17,7 @@ import (
 // @contact.email fiber@swagger.io
 // @license.name Apache 2.0
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html
-// @host localhost:8080
+// @host api-probee.yalin.app
 // @BasePath /
 func main() {
 
