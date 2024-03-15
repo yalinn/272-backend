@@ -13,35 +13,28 @@ import (
 	"github.com/emersion/go-imap/client"
 	"github.com/golang-jwt/jwt/v5"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type User struct {
-	ID       primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
-	Username string             `json:"username" bson:"username"`
-	UserType string             `json:"user_type" bson:"user_type"`
-	Roles    []string           `json:"roles" bson:"roles"`
-	Token    string             `json:"token" bson:"token"`
+	Username string   `json:"id,omitempty" bson:"_id,omitempty"`
+	UserType string   `json:"user_type" bson:"user_type"`
+	Roles    []string `json:"roles" bson:"roles"`
+	Token    string   `json:"token" bson:"token"`
 }
 
 func (u *User) InsertToDB() error {
 	if u.Username == "" || u.UserType == "" {
 		return errors.New("INVALID_USER")
 	}
-	token := jwts.CreateToken(jwt.MapClaims{
-		"username": u.Username,
-		"role":     u.Roles,
-	})
 	user := bson.M{
-		"username":  u.Username,
+		"_id":       u.Username,
 		"user_type": u.UserType,
-		"token":     token,
 		"roles":     []string{u.UserType},
 	}
 	if _, err := db.Users.InsertOne(context.TODO(), user); err != nil {
 		return err
 	}
-	if err := db.Users.FindOne(context.TODO(), bson.M{"username": u.Username}).Decode(&u); err != nil {
+	if err := db.Users.FindOne(context.TODO(), bson.M{"_id": u.Username}).Decode(&u); err != nil {
 		return err
 	}
 	return nil
@@ -55,7 +48,7 @@ func (u *User) PutRoles(roles []string) error {
 		},
 	}
 	query := bson.M{
-		"_id": u.ID,
+		"_id": u.Username,
 	}
 	if _, err := db.Users.UpdateOne(context.TODO(), query, update); err != nil {
 		return err
@@ -66,7 +59,7 @@ func (u *User) PutRoles(roles []string) error {
 func (u *User) FindUser() (*User, error) {
 	var user User
 	query := bson.M{
-		"username":  u.Username,
+		"_id":       u.Username,
 		"user_type": u.UserType,
 	}
 	if err := db.Users.FindOne(context.TODO(), query).Decode(&user); err != nil {
@@ -77,7 +70,7 @@ func (u *User) FindUser() (*User, error) {
 
 func (u *User) GetByUsername() error {
 	query := bson.M{
-		"username":  u.Username,
+		"_id":       u.Username,
 		"user_type": u.UserType,
 	}
 	if err := db.Users.FindOne(context.TODO(), query).Decode(&u); err != nil {
@@ -124,15 +117,7 @@ func (u *User) GetToken() string {
 
 func (u *User) SetToken(token string) error {
 	u.Token = token
-	update := bson.M{
-		"$set": bson.M{
-			"token": token,
-		},
-	}
-	query := bson.M{
-		"_id": u.ID,
-	}
-	if _, err := db.Users.UpdateOne(context.TODO(), query, update); err != nil {
+	if err := db.Redis.Set(token, u.Stringify()); err != nil {
 		return err
 	}
 	return nil

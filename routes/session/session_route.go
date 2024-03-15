@@ -69,6 +69,7 @@ func login(c *fiber.Ctx) error {
 	if err := user.LoginByEmail(form.Password); err != nil {
 		return c.Status(401).JSON(fiber.Map{
 			"message": "Unauthorized",
+			"error":   err.Error(),
 		})
 	}
 
