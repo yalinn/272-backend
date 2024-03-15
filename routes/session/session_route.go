@@ -4,6 +4,7 @@ import (
 	"272-backend/library"
 	"272-backend/package/app"
 	db "272-backend/package/database"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -62,7 +63,7 @@ func login(c *fiber.Ctx) error {
 		})
 	}
 	user := library.User{
-		Username: form.Username,
+		Username: strings.Split(form.Username, "@")[0],
 		UserType: form.UserType,
 	}
 
