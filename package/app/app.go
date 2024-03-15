@@ -2,7 +2,6 @@ package app
 
 import (
 	"encoding/json"
-	"os"
 
 	db "272-backend/package/database"
 
@@ -33,9 +32,9 @@ func init() {
 		cors.New(cors.Config{
 			AllowOrigins: "https://probee.yalin.app",
 			AllowHeaders: "Origin, Content-Type, Accept",
-			AllowOriginsFunc: func(origin string) bool {
+			/* AllowOriginsFunc: func(origin string) bool {
 				return os.Getenv("ENVIRONMENT") == "development"
-			},
+			}, */
 		}),
 		logger.New(),
 		/* getSession, */
