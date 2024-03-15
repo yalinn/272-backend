@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"os"
 
 	db "272-backend/package/database"
 
@@ -30,8 +31,11 @@ func init() {
 	App = fiber.New()
 	App.Use(
 		cors.New(cors.Config{
-			AllowOrigins: "*",
+			AllowOrigins: "https://probee.yalin.app",
 			AllowHeaders: "Origin, Content-Type, Accept",
+			AllowOriginsFunc: func(origin string) bool {
+				return os.Getenv("ENVIRONMENT") == "development"
+			},
 		}),
 		logger.New(),
 		/* getSession, */
