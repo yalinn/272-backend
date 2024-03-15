@@ -30,7 +30,7 @@ func init() {
 	App = fiber.New()
 	App.Use(
 		cors.New(cors.Config{
-			AllowOrigins: "https://www.yalin.app, https://probee.yalin.app",
+			AllowOrigins: "https://www.yalin.app, https://probee.yalin.app, http://127.0.0.1:3000",
 			AllowHeaders: "Origin, Content-Type, Accept",
 			/* AllowOriginsFunc: func(origin string) bool {
 				return os.Getenv("ENVIRONMENT") == "development"
