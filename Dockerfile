@@ -21,7 +21,7 @@ FROM scratch
 COPY --from=builder ["/build/apiserver", "/build/.env", "/"]
 
 # Export necessary port.
-EXPOSE 8080
+EXPOSE 7070
 
 # Command to run when starting the container.
 ENTRYPOINT ["/apiserver"]
