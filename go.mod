@@ -11,8 +11,6 @@ require (
 
 require (
 	github.com/emersion/go-sasl v0.0.0-20200509203442-7bfe0ed36a21 // indirect
-	github.com/philhofer/fwd v1.1.2 // indirect
-	github.com/tinylib/msgp v1.1.8 // indirect
 )
 
 require (
