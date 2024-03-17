@@ -31,7 +31,6 @@ func isAuthorized(ctx *fiber.Ctx) error {
 	}
 	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
 	for _, role := range claims["roles"].([]interface{}) {
-		log.Println(role)
 		if role == "admin" {
 			return ctx.Next()
 		}
