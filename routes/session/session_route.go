@@ -4,43 +4,45 @@ import (
 	"272-backend/library"
 	"272-backend/package/app"
 	db "272-backend/package/database"
+	jwts "272-backend/package/jwt"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func init() {
 	sessionRoutes := app.App.Group("/session")
-	sessionRoutes.Get("/", getSession)
 	sessionRoutes.Post("/", login)
+	jwts.UseJWT(sessionRoutes)
+	sessionRoutes.Get("/", getSession)
 	sessionRoutes.Delete("/", logout)
 }
 
 func getSession(c *fiber.Ctx) error {
-	sess, err := app.SessionStore.Get(c)
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"message": "Failed to get session",
+	auth := c.Locals("user")
+	if auth == nil {
+		return c.Status(401).JSON(fiber.Map{
+			"message": "You are not logged in",
 		})
 	}
-	token := sess.Get("token")
-	if token == nil {
+	claims := auth.(*jwt.Token).Claims.(jwt.MapClaims)
+	if claims["username"] == nil || claims["user_type"] == nil || claims["roles"] == nil {
 		return c.Status(401).JSON(fiber.Map{
-			"message": "Unauthorized",
+			"message": "Authentication token is invalid or expired",
 		})
 	}
 	user := library.User{
-		Token: token.(string),
+		Username: claims["username"].(string),
+		UserType: claims["user_type"].(string),
 	}
-	if err := user.InitToken(); err != nil {
-		return c.Status(401).JSON(fiber.Map{
-			"message": "Unauthorized",
-			"error":   "Invalid token",
-			"context": err.Error(),
+	if err := user.FindUser(); err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"message": "Failed to get user",
+			"error":   err.Error(),
 		})
 	}
 	return c.JSON(fiber.Map{
-		"token": token,
 		"user": fiber.Map{
 			"username":  user.Username,
 			"user_type": user.UserType,
@@ -73,20 +75,27 @@ func login(c *fiber.Ctx) error {
 			"error":   err.Error(),
 		})
 	}
+	claims := &jwt.MapClaims{
+		"username":  user.Username,
+		"user_type": user.UserType,
+		"roles":     user.Roles,
+	}
 
+	token := jwts.CreateToken(*claims)
 	session, err := app.SessionStore.Get(c)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"message": "Failed to get session",
 		})
 	}
-	session.Set("token", user.Token)
-	if err := db.Redis.Set(user.Token, user.Stringify()); err != nil {
+	session.Set("token", token)
+	if err := db.Redis.Set(token, user.Stringify()); err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"message": "Failed to save token to redis",
 			"error":   err.Error(),
 		})
 	}
+
 	if err := session.Save(); err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"message": "Failed to save session",
@@ -95,12 +104,12 @@ func login(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{
-		"token": user.Token,
 		"user": fiber.Map{
 			"username":  user.Username,
 			"user_type": user.UserType,
 			"roles":     user.Roles,
 		},
+		"token": token,
 	})
 }
 

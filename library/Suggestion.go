@@ -49,27 +49,6 @@ func (s *Suggestion) InsertToDB() error {
 	return nil
 }
 
-func GetSuggestion(id string) (Suggestion, error) {
-	var suggestion Suggestion
-	objID, _ := primitive.ObjectIDFromHex(id)
-	if err := db.Suggestions.FindOne(context.TODO(), bson.M{"_id": objID}).Decode(&suggestion); err != nil {
-		return Suggestion{}, err
-	}
-	return suggestion, nil
-}
-
-func GetSuggestions() ([]Suggestion, error) {
-	var suggestions []Suggestion
-	cursor, err := db.Suggestions.Find(context.TODO(), bson.M{})
-	if err != nil {
-		return nil, err
-	}
-	if err := cursor.All(context.TODO(), &suggestions); err != nil {
-		return nil, err
-	}
-	return suggestions, nil
-}
-
 func (s *Suggestion) GiveUpvote(userID string) error {
 	for _, upvote := range s.Upvotes {
 		if upvote == userID {

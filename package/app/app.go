@@ -31,7 +31,7 @@ func init() {
 	App.Use(
 		cors.New(cors.Config{
 			AllowOrigins: "https://www.yalin.app, https://probee.yalin.app, http://127.0.0.1:3000",
-			AllowHeaders: "Origin, Content-Type, Accept",
+			AllowHeaders: "Origin, Content-Type, User-Agent, Accept, Authorization",
 			/* AllowOriginsFunc: func(origin string) bool {
 				return os.Getenv("ENVIRONMENT") == "development"
 			}, */

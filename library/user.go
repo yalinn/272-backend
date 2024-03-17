@@ -3,7 +3,6 @@ package library
 import (
 	"272-backend/config"
 	db "272-backend/package/database"
-	jwts "272-backend/package/jwt"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -11,7 +10,6 @@ import (
 	"log"
 
 	"github.com/emersion/go-imap/client"
-	"github.com/golang-jwt/jwt/v5"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -19,7 +17,6 @@ type User struct {
 	Username string   `json:"id,omitempty" bson:"_id,omitempty"`
 	UserType string   `json:"user_type" bson:"user_type"`
 	Roles    []string `json:"roles" bson:"roles"`
-	Token    string   `json:"token" bson:"token"`
 }
 
 func (u *User) InsertToDB() error {
@@ -56,16 +53,15 @@ func (u *User) PutRoles(roles []string) error {
 	return nil
 }
 
-func (u *User) FindUser() (*User, error) {
-	var user User
+func (u *User) FindUser() error {
 	query := bson.M{
 		"_id":       u.Username,
 		"user_type": u.UserType,
 	}
-	if err := db.Users.FindOne(context.TODO(), query).Decode(&user); err != nil {
-		return nil, err
+	if err := db.Users.FindOne(context.TODO(), query).Decode(&u); err != nil {
+		return err
 	}
-	return &user, nil
+	return nil
 }
 
 func (u *User) GetByUsername() error {
@@ -101,25 +97,6 @@ func (u *User) LoginByEmail(pwd string) error {
 	if err := u.GetByUsername(); err != nil {
 		u.InsertToDB()
 	}
-	token := jwts.CreateToken(jwt.MapClaims{
-		"username": username,
-		"roles":    u.Roles,
-	})
-	if err := u.SetToken(token); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (u *User) GetToken() string {
-	return u.Token
-}
-
-func (u *User) SetToken(token string) error {
-	u.Token = token
-	if err := db.Redis.Set(token, u.Stringify()); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -128,8 +105,8 @@ func (u *User) Stringify() string {
 	return string(out)
 }
 
-func (u *User) InitToken() error {
-	us, err := db.Redis.Get(u.Token)
+func (u *User) InitToken(token string) error {
+	us, err := db.Redis.Get(token)
 	if err != nil {
 		return err
 	}

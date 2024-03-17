@@ -12,7 +12,7 @@ import (
 func UseJWT(route fiber.Router) {
 	route.Use(jwtware.New(jwtware.Config{
 		SigningKey: jwtware.SigningKey{Key: []byte(config.JWT_SECRET_KEY)},
-		ContextKey: "token",
+		ContextKey: "user",
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			log.Println(err.Error())
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
