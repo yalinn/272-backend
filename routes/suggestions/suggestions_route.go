@@ -5,7 +5,6 @@ import (
 	"272-backend/package/app"
 	jwts "272-backend/package/jwt"
 	"context"
-	"log"
 
 	db "272-backend/package/database"
 
@@ -119,25 +118,13 @@ func getSuggestions(c *fiber.Ctx) error {
 }
 
 func createSuggestion(c *fiber.Ctx) error {
-	sess, err := app.SessionStore.Get(c)
-	if err != nil {
-		log.Println(err)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"message": "Failed to get session",
-		})
-	}
-	token := sess.Get("token")
-	if token == nil {
+	user := c.Locals("user")
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	userID := claims["username"].(string)
+	userType := claims["user_type"].(string)
+	if userType != "student" {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"message": "Unauthorized",
-		})
-	}
-	var user library.User
-	if err := user.InitToken(token.(string)); err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"message": "Unauthorized",
-			"error":   "Invalid token",
-			"context": err.Error(),
+			"message": "You are not authorized to create a suggestion",
 		})
 	}
 	var suggestion library.Suggestion
@@ -146,7 +133,7 @@ func createSuggestion(c *fiber.Ctx) error {
 			"message": "Invalid request",
 		})
 	}
-	suggestion.AuthorID = user.Username // TODO: change to user.ID
+	suggestion.AuthorID = userID // TODO: change to user.ID
 	if suggestion.Title == "" || suggestion.Content == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"message": "Invalid request",
