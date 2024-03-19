@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"strconv"
+	"strings"
 
 	"github.com/emersion/go-imap/client"
 	"go.mongodb.org/mongo-driver/bson"
@@ -19,14 +21,25 @@ type User struct {
 	Roles    []string `json:"roles" bson:"roles"`
 }
 
+func (u *User) GetDepartmentID() int {
+	chars := strings.Split(u.Username[3:], "")
+	id_slice := []string{}
+	for i := 0; i < len(chars)-3; i++ {
+		id_slice = append(id_slice, chars[i])
+	}
+	department, _ := strconv.Atoi(strings.Join(id_slice, ""))
+	return department
+}
+
 func (u *User) InsertToDB() error {
 	if u.Username == "" || u.UserType == "" {
 		return errors.New("INVALID_USER")
 	}
 	user := bson.M{
-		"_id":       u.Username,
-		"user_type": u.UserType,
-		"roles":     []string{u.UserType},
+		"_id":        u.Username,
+		"user_type":  u.UserType,
+		"roles":      []string{u.UserType},
+		"department": u.GetDepartmentID(),
 	}
 	if _, err := db.Users.InsertOne(context.TODO(), user); err != nil {
 		return err

@@ -5,6 +5,8 @@ import (
 	"272-backend/package/app"
 	jwts "272-backend/package/jwt"
 	"context"
+	"strconv"
+	"strings"
 
 	db "272-backend/package/database"
 
@@ -52,7 +54,7 @@ func getSuggestions(c *fiber.Ctx) error {
 	}
 	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
 	userID := claims["username"].(string)
-	userType := claims["user_type"].(string)
+	/* userType := claims["user_type"].(string) */
 	var suggestions []library.Suggestion
 	cursor, err := db.Suggestions.Find(context.TODO(), bson.M{})
 	if err != nil {
@@ -68,38 +70,39 @@ func getSuggestions(c *fiber.Ctx) error {
 		})
 	}
 	type suggest struct {
-		ID      string   `json:"id"`
-		Title   string   `json:"title"`
-		Content string   `json:"content"`
-		Author  string   `json:"author"`
-		Upvotes int      `json:"upvotes"`
-		Stars   float64  `json:"stars"`
-		Date    string   `json:"date"`
-		Tags    []string `json:"tags"`
-		Status  string   `json:"status"`
-		Starred float64  `json:"starred"`
-		Voted   bool     `json:"voted"`
+		ID         string   `json:"id"`
+		Title      string   `json:"title"`
+		Content    string   `json:"content"`
+		Author     string   `json:"author"`
+		Upvotes    int      `json:"upvotes"`
+		Stars      float64  `json:"stars"`
+		Date       string   `json:"date"`
+		Tags       []string `json:"tags"`
+		Status     string   `json:"status"`
+		Starred    float64  `json:"starred"`
+		Voted      bool     `json:"voted"`
+		Department int      `json:"department"`
 	}
 	var response []suggest
 	for _, suggestion := range suggestions {
 		starred := 0.00
 		voted := false
-		if userType == "teacher" {
-			for _, stars := range suggestion.Stars {
-				if stars.UserID == userID {
-					starred = stars.Star
-					voted = true
-					break
-				}
-			}
-		} else {
-			for _, upvote := range suggestion.Upvotes {
-				if upvote == userID {
-					voted = true
-					break
-				}
+		/* if userType == "teacher" { */
+		for _, stars := range suggestion.Stars {
+			if stars.UserID == userID {
+				starred = stars.Star
+				voted = true
+				break
 			}
 		}
+		/* } else { */
+		for _, upvote := range suggestion.Upvotes {
+			if upvote == userID {
+				voted = true
+				break
+			}
+		}
+		/* } */
 		response = append(response, suggest{
 			ID:      suggestion.ID.Hex(),
 			Title:   suggestion.Title,
@@ -203,5 +206,15 @@ func starSuggestion(c *fiber.Ctx) error {
 		})
 	}
 
-	return nil
+	return c.Status(fiber.StatusOK).JSON(suggestion)
+}
+
+func GetDepartmentID(username string) int {
+	chars := strings.Split(username[3:], "")
+	id_slice := []string{}
+	for i := 0; i < len(chars)-3; i++ {
+		id_slice = append(id_slice, chars[i])
+	}
+	department, _ := strconv.Atoi(strings.Join(id_slice, ""))
+	return department
 }
