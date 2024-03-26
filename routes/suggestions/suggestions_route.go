@@ -137,9 +137,14 @@ func createSuggestion(c *fiber.Ctx) error {
 		})
 	}
 	suggestion.AuthorID = userID // TODO: change to user.ID
-	if suggestion.Title == "" || suggestion.Content == "" {
+	if suggestion.Title == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"message": "Invalid request",
+			"message": "Title is required",
+		})
+	}
+	if suggestion.Content == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "Content is required",
 		})
 	}
 	if err := suggestion.InsertToDB(); err != nil {
