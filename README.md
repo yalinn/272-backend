@@ -3,7 +3,6 @@ this project uses a [golang](https://go.dev/) framework, [gofiber](https://gofib
 
 Before you start:
   - Be sure you've installed [go programming language](https://go.dev/) to your device
-  - Be sure you've installed [swagger framework](https://github.com/swaggo/swag) (You need to install even we're not using it yet)
   - Be sure you have a MongoDB cluster connection URL & Redis connection URL
 
 example .env file:
@@ -17,4 +16,22 @@ PORT=":8080"
 IMAP_S_HOST="-student-imap-server-domain-"
 IMAP_T_HOST="-academic-imap-server-domain-"
 IMAP_PORT=993
+```
+### To start:
+1. Download modules
+```bash
+go mod download
+```
+2. Install swagger
+```bash
+go install github.com/swaggo/swag/cmd/swag@latest
+```
+3. Initialize docs
+```bash
+swag init
+```
+4. Create & fill the .env file
+5. Run the application
+```bash
+go run .
 ```
