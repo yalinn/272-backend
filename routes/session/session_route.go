@@ -75,13 +75,17 @@ func login(c *fiber.Ctx) error {
 			"error":   err.Error(),
 		})
 	}
-	claims := &jwt.MapClaims{
+	/* claims := &jwt.MapClaims{
 		"username":  user.Username,
 		"user_type": user.UserType,
 		"roles":     user.Roles,
-	}
+	} */
 
-	token := jwts.CreateToken(*claims)
+	token := jwts.CreateToken(jwt.MapClaims{
+		"username":  user.Username,
+		"user_type": user.UserType,
+		"roles":     user.Roles,
+	})
 	session, err := app.SessionStore.Get(c)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
@@ -103,7 +107,7 @@ func login(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.JSON(fiber.Map{
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"user": fiber.Map{
 			"username":  user.Username,
 			"user_type": user.UserType,

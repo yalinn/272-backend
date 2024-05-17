@@ -16,9 +16,10 @@ import (
 )
 
 type User struct {
-	Username string   `json:"id,omitempty" bson:"_id,omitempty"`
-	UserType string   `json:"user_type" bson:"user_type"`
-	Roles    []string `json:"roles" bson:"roles"`
+	Username   string   `json:"id,omitempty" bson:"_id,omitempty"`
+	UserType   string   `json:"user_type" bson:"user_type"`
+	Roles      []string `json:"roles" bson:"roles"`
+	Department int      `json:"department" bson:"department"`
 }
 
 func (u *User) GetDepartmentID() int {

@@ -186,6 +186,33 @@ func (s *Suggestion) Reject(reasons []string, executorID string) (Rejection, err
 	return rejection, nil
 }
 
+type Proposal struct {
+	ID         primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
+	Title      string             `json:"title" bson:"title"`
+	Content    string             `json:"content" bson:"content"`
+	AuthorID   string             `json:"author" bson:"author"`
+	Upvotes    int                `json:"upvotes" bson:"upvotes"`
+	Stars      float64            `json:"stars" bson:"stars"`
+	Tags       []string           `json:"tags" bson:"tags"`
+	ExecutorID string             `json:"executor" bson:"executor"`
+	Date       string             `json:"date" bson:"date"`
+}
+
+func (s *Suggestion) Approve(executorID string) error {
+	update := bson.M{
+		"$set": bson.M{
+			"status": "approved",
+		},
+	}
+	query := bson.M{
+		"_id": s.ID,
+	}
+	if _, err := db.Suggestions.UpdateOne(context.TODO(), query, update); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s *Suggestion) CalculateAverageStars() float64 {
 	totalStars := 0.00
 	starCount := 0.00
