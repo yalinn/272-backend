@@ -1,9 +1,7 @@
-package app
+package pkg
 
 import (
 	"encoding/json"
-
-	db "272-backend/package/database"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -144,7 +142,7 @@ func GetRoles(c *fiber.Ctx) []string {
 		return []string{}
 	}
 	token := sess.Get("token")
-	rolesString, err := db.Redis.Get(token.(string))
+	rolesString, err := Redis.Get(token.(string))
 	if err != nil {
 		return []string{}
 	}

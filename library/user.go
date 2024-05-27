@@ -2,7 +2,7 @@ package library
 
 import (
 	"272-backend/config"
-	db "272-backend/package/database"
+	"272-backend/pkg"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -13,7 +13,16 @@ import (
 
 	"github.com/emersion/go-imap/client"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
+
+var (
+	Users *mongo.Collection
+)
+
+func init() {
+	Users = pkg.Mongo.Collection("users")
+}
 
 type User struct {
 	Username   string   `json:"id,omitempty" bson:"_id,omitempty"`
@@ -42,10 +51,10 @@ func (u *User) InsertToDB() error {
 		"roles":      []string{u.UserType},
 		"department": u.GetDepartmentID(),
 	}
-	if _, err := db.Users.InsertOne(context.TODO(), user); err != nil {
+	if _, err := Users.InsertOne(context.TODO(), user); err != nil {
 		return err
 	}
-	if err := db.Users.FindOne(context.TODO(), bson.M{"_id": u.Username}).Decode(&u); err != nil {
+	if err := Users.FindOne(context.TODO(), bson.M{"_id": u.Username}).Decode(&u); err != nil {
 		return err
 	}
 	return nil
@@ -61,7 +70,7 @@ func (u *User) PutRoles(roles []string) error {
 	query := bson.M{
 		"_id": u.Username,
 	}
-	if _, err := db.Users.UpdateOne(context.TODO(), query, update); err != nil {
+	if _, err := Users.UpdateOne(context.TODO(), query, update); err != nil {
 		return err
 	}
 	return nil
@@ -72,7 +81,7 @@ func (u *User) FindUser() error {
 		"_id":       u.Username,
 		"user_type": u.UserType,
 	}
-	if err := db.Users.FindOne(context.TODO(), query).Decode(&u); err != nil {
+	if err := Users.FindOne(context.TODO(), query).Decode(&u); err != nil {
 		return err
 	}
 	return nil
@@ -83,7 +92,7 @@ func (u *User) GetByUsername() error {
 		"_id":       u.Username,
 		"user_type": u.UserType,
 	}
-	if err := db.Users.FindOne(context.TODO(), query).Decode(&u); err != nil {
+	if err := Users.FindOne(context.TODO(), query).Decode(&u); err != nil {
 		return err
 	}
 	return nil
@@ -120,7 +129,7 @@ func (u *User) Stringify() string {
 }
 
 func (u *User) InitToken(token string) error {
-	us, err := db.Redis.Get(token)
+	us, err := pkg.Redis.Get(token)
 	if err != nil {
 		return err
 	}
@@ -128,4 +137,29 @@ func (u *User) InitToken(token string) error {
 		return err
 	}
 	return nil
+}
+
+func GetUsers() ([]User, error) {
+	users := []User{}
+	cursor, err := Users.Find(context.TODO(), bson.M{})
+	if err != nil {
+		return users, err
+	}
+	defer cursor.Close(context.Background())
+	for cursor.Next(context.Background()) {
+		var user User
+		if err := cursor.Decode(&user); err != nil {
+			return users, err
+		}
+		users = append(users, user)
+	}
+	return users, nil
+}
+
+func GetUser(id string) (User, error) {
+	var user User
+	if err := Users.FindOne(context.TODO(), bson.M{"_id": id}).Decode(&user); err != nil {
+		return user, err
+	}
+	return user, nil
 }

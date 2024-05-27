@@ -1,7 +1,7 @@
 package library
 
 import (
-	db "272-backend/package/database"
+	"272-backend/pkg"
 	"context"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -12,7 +12,7 @@ import (
 var Projects *mongo.Collection
 
 func init() {
-	Projects = db.Mongo.Collection("projects")
+	Projects = pkg.Mongo.Collection("projects")
 }
 
 type Project struct {
@@ -166,4 +166,16 @@ func (p *Project) GetProject() error {
 		return err
 	}
 	return nil
+}
+
+func GetAllProjects() ([]Project, error) {
+	projects := []Project{}
+	cursor, err := Projects.Find(context.TODO(), bson.M{})
+	if err != nil {
+		return projects, err
+	}
+	if err := cursor.All(context.TODO(), &projects); err != nil {
+		return projects, err
+	}
+	return projects, nil
 }

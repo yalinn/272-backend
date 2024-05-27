@@ -2,23 +2,18 @@ package suggestions
 
 import (
 	"272-backend/library"
-	"272-backend/package/app"
-	jwts "272-backend/package/jwt"
-	"context"
+	"272-backend/pkg"
 	"strconv"
 	"strings"
 
-	db "272-backend/package/database"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func init() {
-	route := app.App.Group("/suggestions")
-	jwts.UseJWT(route)
+	route := pkg.App.Group("/suggestions")
+	pkg.UseJWT(route)
 	route.Post("/", createSuggestion)
 	route.Get("/", getSuggestions)
 	route.Put("/:id/star", starSuggestion)
@@ -55,20 +50,14 @@ func getSuggestions(c *fiber.Ctx) error {
 	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
 	userID := claims["username"].(string)
 	/* userType := claims["user_type"].(string) */
-	var suggestions []library.Suggestion
-	cursor, err := db.Suggestions.Find(context.TODO(), bson.M{})
+	suggestions, err := library.GetSuggestions()
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": "Failed to get suggestions",
 			"error":   err.Error(),
 		})
 	}
-	if err := cursor.All(context.TODO(), &suggestions); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"message": "Failed to get suggestions",
-			"error":   err.Error(),
-		})
-	}
+
 	type suggest struct {
 		ID         string   `json:"id"`
 		Title      string   `json:"title"`

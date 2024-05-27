@@ -1,4 +1,4 @@
-package db
+package pkg
 
 import (
 	"context"
@@ -12,10 +12,7 @@ import (
 )
 
 var (
-	Mongo       *mongo.Database
-	Users       *mongo.Collection
-	Suggestions *mongo.Collection
-	Rejections  *mongo.Collection
+	Mongo *mongo.Database
 )
 
 func init() {
@@ -34,7 +31,4 @@ func init() {
 			log.Println("Successfully connected to MongoDB!")
 		}
 	}
-	Users = Mongo.Collection("users")
-	Suggestions = Mongo.Collection("suggestions")
-	Rejections = Mongo.Collection("rejections")
 }

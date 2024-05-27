@@ -1,22 +1,22 @@
 package users
 
 import (
-	"272-backend/package/app"
-	jwts "272-backend/package/jwt"
+	"272-backend/library"
+	"272-backend/pkg"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 func init() {
-	userRoutes := app.App.Group("/users")
-	jwts.UseJWT(userRoutes)
+	userRoutes := pkg.App.Group("/users")
+	pkg.UseJWT(userRoutes)
 	userRoutes.Get("/", getUsers)
 	userRoutes.Get("/:id", getUser)
 	// userRoutes.Post("/", register)
 }
 
 func getUsers(c *fiber.Ctx) error {
-	users, err := GetUsers()
+	users, err := library.GetUsers()
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"message": "Failed to get users",
@@ -28,7 +28,7 @@ func getUsers(c *fiber.Ctx) error {
 
 func getUser(c *fiber.Ctx) error {
 	id := c.Params("id")
-	user, err := GetUser(id)
+	user, err := library.GetUser(id)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"message": "Failed to get user",

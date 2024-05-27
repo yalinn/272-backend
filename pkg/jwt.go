@@ -1,4 +1,4 @@
-package jwts
+package pkg
 
 import (
 	"272-backend/config"

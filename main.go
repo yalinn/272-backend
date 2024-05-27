@@ -5,7 +5,7 @@ import (
 
 	"272-backend/config"
 	_ "272-backend/docs"
-	"272-backend/package/app"
+	"272-backend/pkg"
 	_ "272-backend/routes"
 )
 
@@ -20,11 +20,9 @@ import (
 // @host api-probee.yalin.app
 // @BasePath /
 func main() {
-
-	if err := app.App.Listen(config.PORT); err != nil {
+	if err := pkg.App.Listen(config.PORT); err != nil {
 		log.Fatal("Oops... Server is not running! Reason: %v", err)
 	} else {
 		log.Info("Server is running on port 3000...")
 	}
-
 }

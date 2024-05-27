@@ -1,14 +1,25 @@
 package library
 
 import (
-	db "272-backend/package/database"
+	"272-backend/pkg"
 	"context"
 	"log"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
+
+var (
+	Suggestions *mongo.Collection
+	Rejections  *mongo.Collection
+)
+
+func init() {
+	Suggestions = pkg.Mongo.Collection("suggestions")
+	Rejections = pkg.Mongo.Collection("rejections")
+}
 
 type Suggestion struct {
 	ID       primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
@@ -26,6 +37,14 @@ type Suggestion struct {
 	Status string   `json:"status" bson:"status"`
 }
 
+func (s *Suggestion) WithID(id string) error {
+	objID, _ := primitive.ObjectIDFromHex(id)
+	if err := Suggestions.FindOne(context.TODO(), bson.M{"_id": objID}).Decode(&s); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s *Suggestion) InsertToDB() error {
 	suggestion := bson.M{
 		"title":   s.Title,
@@ -41,10 +60,10 @@ func (s *Suggestion) InsertToDB() error {
 		"tags":   []string{},
 		"status": "pending",
 	}
-	if _, err := db.Suggestions.InsertOne(context.TODO(), suggestion); err != nil {
+	if _, err := Suggestions.InsertOne(context.TODO(), suggestion); err != nil {
 		return err
 	}
-	if err := db.Suggestions.FindOne(context.TODO(), bson.M{"title": s.Title}).Decode(&s); err != nil {
+	if err := Suggestions.FindOne(context.TODO(), bson.M{"title": s.Title}).Decode(&s); err != nil {
 		return err
 	}
 	return nil
@@ -64,10 +83,10 @@ func (s *Suggestion) GiveUpvote(userID string) error {
 	query := bson.M{
 		"_id": s.ID,
 	}
-	if _, err := db.Suggestions.UpdateOne(context.TODO(), query, update); err != nil {
+	if _, err := Suggestions.UpdateOne(context.TODO(), query, update); err != nil {
 		return err
 	}
-	if err := db.Suggestions.FindOne(context.TODO(), bson.M{"_id": s.ID}).Decode(&s); err != nil {
+	if err := Suggestions.FindOne(context.TODO(), bson.M{"_id": s.ID}).Decode(&s); err != nil {
 		return err
 	}
 	return nil
@@ -82,7 +101,7 @@ func (s *Suggestion) GiveStar(userID string, star int) error {
 			},
 		},
 	}
-	if err := db.Suggestions.FindOne(context.TODO(), query).Decode(&s); err == nil {
+	if err := Suggestions.FindOne(context.TODO(), query).Decode(&s); err == nil {
 		/* log.Println("User already starred") */
 		stars := []struct {
 			UserID string  `json:"userID" bson:"userID"`
@@ -108,11 +127,11 @@ func (s *Suggestion) GiveStar(userID string, star int) error {
 		query := bson.M{
 			"_id": s.ID,
 		}
-		if _, err := db.Suggestions.UpdateOne(context.TODO(), query, update); err != nil {
+		if _, err := Suggestions.UpdateOne(context.TODO(), query, update); err != nil {
 			log.Println(err.Error())
 			return err
 		}
-		if err := db.Suggestions.FindOne(context.TODO(), bson.M{"_id": s.ID}).Decode(&s); err != nil {
+		if err := Suggestions.FindOne(context.TODO(), bson.M{"_id": s.ID}).Decode(&s); err != nil {
 			log.Println(err.Error())
 			return err
 		}
@@ -131,10 +150,10 @@ func (s *Suggestion) GiveStar(userID string, star int) error {
 		query := bson.M{
 			"_id": s.ID,
 		}
-		if _, err := db.Suggestions.UpdateOne(context.TODO(), query, update); err != nil {
+		if _, err := Suggestions.UpdateOne(context.TODO(), query, update); err != nil {
 			return err
 		}
-		if err := db.Suggestions.FindOne(context.TODO(), bson.M{"_id": s.ID}).Decode(&s); err != nil {
+		if err := Suggestions.FindOne(context.TODO(), bson.M{"_id": s.ID}).Decode(&s); err != nil {
 			return err
 		}
 		return nil
@@ -166,10 +185,10 @@ func (s *Suggestion) Reject(reasons []string, executorID string) (Rejection, err
 		ExecutorID: executorID,
 		Date:       time.Now().UTC().Format(time.RFC3339),
 	}
-	if _, err := db.Rejections.InsertOne(context.TODO(), rejection); err != nil {
+	if _, err := Rejections.InsertOne(context.TODO(), rejection); err != nil {
 		return Rejection{}, err
 	}
-	if err := db.Rejections.FindOne(context.TODO(), bson.M{"title": s.Title}).Decode(&rejection); err != nil {
+	if err := Rejections.FindOne(context.TODO(), bson.M{"title": s.Title}).Decode(&rejection); err != nil {
 		return Rejection{}, err
 	}
 	update := bson.M{
@@ -180,7 +199,7 @@ func (s *Suggestion) Reject(reasons []string, executorID string) (Rejection, err
 	query := bson.M{
 		"_id": s.ID,
 	}
-	if _, err := db.Suggestions.UpdateOne(context.TODO(), query, update); err != nil {
+	if _, err := Suggestions.UpdateOne(context.TODO(), query, update); err != nil {
 		return rejection, err
 	}
 	return rejection, nil
@@ -207,7 +226,7 @@ func (s *Suggestion) Approve(executorID string) error {
 	query := bson.M{
 		"_id": s.ID,
 	}
-	if _, err := db.Suggestions.UpdateOne(context.TODO(), query, update); err != nil {
+	if _, err := Suggestions.UpdateOne(context.TODO(), query, update); err != nil {
 		return err
 	}
 	return nil
@@ -225,4 +244,16 @@ func (s *Suggestion) CalculateAverageStars() float64 {
 		average = totalStars / starCount
 	}
 	return average
+}
+
+func GetSuggestions() ([]Suggestion, error) {
+	var suggestions []Suggestion
+	cursor, err := Suggestions.Find(context.TODO(), bson.M{})
+	if err != nil {
+		return []Suggestion{}, err
+	}
+	if err := cursor.All(context.TODO(), &suggestions); err != nil {
+		return []Suggestion{}, err
+	}
+	return suggestions, nil
 }

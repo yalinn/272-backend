@@ -2,9 +2,8 @@ package session
 
 import (
 	"272-backend/library"
-	"272-backend/package/app"
-	db "272-backend/package/database"
-	jwts "272-backend/package/jwt"
+	"272-backend/pkg"
+	"log"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -12,9 +11,9 @@ import (
 )
 
 func init() {
-	sessionRoutes := app.App.Group("/session")
+	sessionRoutes := pkg.App.Group("/session")
 	sessionRoutes.Post("/", login)
-	jwts.UseJWT(sessionRoutes)
+	pkg.UseJWT(sessionRoutes)
 	sessionRoutes.Get("/", getSession)
 	sessionRoutes.Delete("/", logout)
 }
@@ -75,34 +74,16 @@ func login(c *fiber.Ctx) error {
 			"error":   err.Error(),
 		})
 	}
-	/* claims := &jwt.MapClaims{
-		"username":  user.Username,
-		"user_type": user.UserType,
-		"roles":     user.Roles,
-	} */
 
-	token := jwts.CreateToken(jwt.MapClaims{
+	token := pkg.CreateToken(jwt.MapClaims{
 		"username":  user.Username,
 		"user_type": user.UserType,
 		"roles":     user.Roles,
 	})
-	session, err := app.SessionStore.Get(c)
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"message": "Failed to get session",
-		})
-	}
-	session.Set("token", token)
-	if err := db.Redis.Set(token, user.Stringify()); err != nil {
+
+	if err := pkg.Redis.Set(token, user.Stringify()); err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"message": "Failed to save token to redis",
-			"error":   err.Error(),
-		})
-	}
-
-	if err := session.Save(); err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"message": "Failed to save session",
 			"error":   err.Error(),
 		})
 	}
@@ -118,16 +99,18 @@ func login(c *fiber.Ctx) error {
 }
 
 func logout(c *fiber.Ctx) error {
-	session, err := app.SessionStore.Get(c)
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"message": "Failed to get session",
+	auth := c.Locals("user")
+	if auth == nil {
+		return c.Status(401).JSON(fiber.Map{
+			"message": "You are not logged in",
 		})
 	}
-	session.Delete("token")
-	if err := session.Save(); err != nil {
+	claims := auth.(*jwt.Token).Raw
+	log.Println(claims)
+	if err := pkg.Redis.Del(claims); err != nil {
 		return c.Status(500).JSON(fiber.Map{
-			"message": "Failed to save session",
+			"message": "Failed to delete token from redis",
+			"error":   err.Error(),
 		})
 	}
 	return c.SendStatus(204)
