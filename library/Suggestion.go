@@ -4,6 +4,8 @@ import (
 	"272-backend/pkg"
 	"context"
 	"log"
+	"strconv"
+	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -14,11 +16,15 @@ import (
 var (
 	Suggestions *mongo.Collection
 	Rejections  *mongo.Collection
+	Approvals   *mongo.Collection
+	Reports     *mongo.Collection
 )
 
 func init() {
 	Suggestions = pkg.Mongo.Collection("suggestions")
 	Rejections = pkg.Mongo.Collection("rejections")
+	Approvals = pkg.Mongo.Collection("approvals")
+	Reports = pkg.Mongo.Collection("reports")
 }
 
 type Suggestion struct {
@@ -46,24 +52,20 @@ func (s *Suggestion) WithID(id string) error {
 }
 
 func (s *Suggestion) InsertToDB() error {
-	suggestion := bson.M{
-		"title":   s.Title,
-		"content": s.Content,
-		"author":  s.AuthorID,
-		"upvotes": []string{},
-		"stars": []struct {
-			UserID string  `json:"userID" bson:"userID"`
-			Star   float64 `json:"star" bson:"star"`
-			Date   string  `json:"date" bson:"date"`
-		}{},
-		"date":   time.Now().UTC().Format(time.RFC3339),
-		"tags":   []string{},
-		"status": "pending",
-	}
-	if _, err := Suggestions.InsertOne(context.TODO(), suggestion); err != nil {
+	s.Date = time.Now().UTC().Format(time.RFC3339)
+	s.Status = "pending"
+	s.Upvotes = []string{}
+	s.Stars = []struct {
+		UserID string  `json:"userID" bson:"userID"`
+		Star   float64 `json:"star" bson:"star"`
+		Date   string  `json:"date" bson:"date"`
+	}{}
+	s.Tags = []string{}
+	res, err := Suggestions.InsertOne(context.TODO(), s)
+	if err != nil {
 		return err
 	}
-	if err := Suggestions.FindOne(context.TODO(), bson.M{"title": s.Title}).Decode(&s); err != nil {
+	if err := Suggestions.FindOne(context.TODO(), bson.M{"_id": res.InsertedID}).Decode(&s); err != nil {
 		return err
 	}
 	return nil
@@ -162,34 +164,20 @@ func (s *Suggestion) GiveStar(userID string, star int) error {
 
 type Rejection struct {
 	ID         primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
-	Title      string             `json:"title" bson:"title"`
-	Content    string             `json:"content" bson:"content"`
-	AuthorID   string             `json:"author" bson:"author"`
-	Upvotes    int                `json:"upvotes" bson:"upvotes"`
-	Stars      float64            `json:"stars" bson:"stars"`
-	Tags       []string           `json:"tags" bson:"tags"`
-	Reasons    []string           `json:"reason" bson:"reason"`
+	Reason     string             `json:"reason" bson:"reason"`
 	ExecutorID string             `json:"executor" bson:"executor"`
 	Date       string             `json:"date" bson:"date"`
 }
 
-func (s *Suggestion) Reject(reasons []string, executorID string) (Rejection, error) {
+func (s *Suggestion) Reject(executorID string, reason string) error {
 	rejection := Rejection{
-		Title:      s.Title,
-		Content:    s.Content,
-		AuthorID:   s.AuthorID,
-		Upvotes:    len(s.Upvotes),
-		Stars:      s.CalculateAverageStars(),
-		Tags:       s.Tags,
-		Reasons:    reasons,
+		ID:         s.ID,
+		Reason:     reason,
 		ExecutorID: executorID,
 		Date:       time.Now().UTC().Format(time.RFC3339),
 	}
 	if _, err := Rejections.InsertOne(context.TODO(), rejection); err != nil {
-		return Rejection{}, err
-	}
-	if err := Rejections.FindOne(context.TODO(), bson.M{"title": s.Title}).Decode(&rejection); err != nil {
-		return Rejection{}, err
+		return err
 	}
 	update := bson.M{
 		"$set": bson.M{
@@ -200,24 +188,29 @@ func (s *Suggestion) Reject(reasons []string, executorID string) (Rejection, err
 		"_id": s.ID,
 	}
 	if _, err := Suggestions.UpdateOne(context.TODO(), query, update); err != nil {
-		return rejection, err
+		return err
 	}
-	return rejection, nil
+	if err := Suggestions.FindOne(context.TODO(), bson.M{"_id": s.ID}).Decode(&s); err != nil {
+		return err
+	}
+	return nil
 }
 
-type Proposal struct {
+type Approval struct {
 	ID         primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
-	Title      string             `json:"title" bson:"title"`
-	Content    string             `json:"content" bson:"content"`
-	AuthorID   string             `json:"author" bson:"author"`
-	Upvotes    int                `json:"upvotes" bson:"upvotes"`
-	Stars      float64            `json:"stars" bson:"stars"`
-	Tags       []string           `json:"tags" bson:"tags"`
 	ExecutorID string             `json:"executor" bson:"executor"`
 	Date       string             `json:"date" bson:"date"`
 }
 
 func (s *Suggestion) Approve(executorID string) error {
+	approval := Approval{
+		ID:         s.ID,
+		ExecutorID: executorID,
+		Date:       time.Now().UTC().Format(time.RFC3339),
+	}
+	if _, err := Approvals.InsertOne(context.TODO(), approval); err != nil {
+		return err
+	}
 	update := bson.M{
 		"$set": bson.M{
 			"status": "approved",
@@ -226,7 +219,44 @@ func (s *Suggestion) Approve(executorID string) error {
 	query := bson.M{
 		"_id": s.ID,
 	}
-	if _, err := Suggestions.UpdateOne(context.TODO(), query, update); err != nil {
+	res, err := Suggestions.UpdateOne(context.TODO(), query, update)
+	if err != nil {
+		return err
+	}
+	if err := Suggestions.FindOne(context.TODO(), bson.M{"_id": res.UpsertedID}).Decode(&s); err != nil {
+		return err
+	}
+	return nil
+}
+
+type Report struct {
+	ID         primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
+	ExecutorID string             `json:"executor" bson:"executor"`
+	Date       string             `json:"date" bson:"date"`
+}
+
+func (s *Suggestion) Report(executorID string) error {
+	report := Report{
+		ID:         s.ID,
+		ExecutorID: executorID,
+		Date:       time.Now().UTC().Format(time.RFC3339),
+	}
+	if _, err := Reports.InsertOne(context.TODO(), report); err != nil {
+		return err
+	}
+	update := bson.M{
+		"$set": bson.M{
+			"status": "reported",
+		},
+	}
+	query := bson.M{
+		"_id": s.ID,
+	}
+	res, err := Suggestions.UpdateOne(context.TODO(), query, update)
+	if err != nil {
+		return err
+	}
+	if err := Suggestions.FindOne(context.TODO(), bson.M{"_id": res.UpsertedID}).Decode(&s); err != nil {
 		return err
 	}
 	return nil
@@ -246,6 +276,30 @@ func (s *Suggestion) CalculateAverageStars() float64 {
 	return average
 }
 
+func GetRejections() ([]Rejection, error) {
+	var rejections []Rejection
+	cursor, err := Rejections.Find(context.TODO(), bson.M{})
+	if err != nil {
+		return []Rejection{}, err
+	}
+	if err := cursor.All(context.TODO(), &rejections); err != nil {
+		return []Rejection{}, err
+	}
+	return rejections, nil
+}
+
+func GetApprovedSuggestions() ([]Suggestion, error) {
+	var suggestions []Suggestion
+	cursor, err := Suggestions.Find(context.TODO(), bson.M{"status": "approved"})
+	if err != nil {
+		return []Suggestion{}, err
+	}
+	if err := cursor.All(context.TODO(), &suggestions); err != nil {
+		return []Suggestion{}, err
+	}
+	return suggestions, nil
+}
+
 func GetSuggestions() ([]Suggestion, error) {
 	var suggestions []Suggestion
 	cursor, err := Suggestions.Find(context.TODO(), bson.M{})
@@ -256,4 +310,67 @@ func GetSuggestions() ([]Suggestion, error) {
 		return []Suggestion{}, err
 	}
 	return suggestions, nil
+}
+
+func GetReportedSuggestions() ([]Suggestion, error) {
+	var suggestions []Suggestion
+	cursor, err := Suggestions.Find(context.TODO(), bson.M{"status": "reported"})
+	if err != nil {
+		return []Suggestion{}, err
+	}
+	if err := cursor.All(context.TODO(), &suggestions); err != nil {
+		return []Suggestion{}, err
+	}
+	return suggestions, nil
+}
+
+type SuggestionResponse struct {
+	ID         string   `json:"id"`
+	Title      string   `json:"title"`
+	Content    string   `json:"content"`
+	Author     string   `json:"author"`
+	Upvotes    int      `json:"upvotes"`
+	Stars      float64  `json:"stars"`
+	Date       string   `json:"date"`
+	Tags       []string `json:"tags"`
+	Status     string   `json:"status"`
+	Starred    float64  `json:"starred"`
+	Voted      bool     `json:"voted"`
+	Department int      `json:"department"`
+}
+
+func (s *Suggestion) ToResponse(userID string) SuggestionResponse {
+	starred := 0.00
+	voted := false
+	for _, stars := range s.Stars {
+		if stars.UserID == userID {
+			starred = stars.Star
+			voted = true
+			break
+		}
+	}
+	response := SuggestionResponse{
+		ID:         s.ID.Hex(),
+		Title:      s.Title,
+		Content:    s.Content,
+		Author:     s.AuthorID,
+		Upvotes:    len(s.Upvotes),
+		Stars:      s.CalculateAverageStars(),
+		Date:       s.Date,
+		Tags:       s.Tags,
+		Status:     s.Status,
+		Starred:    starred,
+		Voted:      voted,
+		Department: GetDepartmentID(s.AuthorID),
+	}
+	return response
+}
+func GetDepartmentID(username string) int {
+	chars := strings.Split(username[3:], "")
+	id_slice := []string{}
+	for i := 0; i < len(chars)-3; i++ {
+		id_slice = append(id_slice, chars[i])
+	}
+	department, _ := strconv.Atoi(strings.Join(id_slice, ""))
+	return department
 }

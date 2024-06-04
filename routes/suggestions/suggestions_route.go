@@ -3,8 +3,6 @@ package suggestions
 import (
 	"272-backend/library"
 	"272-backend/pkg"
-	"strconv"
-	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
@@ -16,8 +14,12 @@ func init() {
 	pkg.UseJWT(route)
 	route.Post("/", createSuggestion)
 	route.Get("/", getSuggestions)
-	route.Put("/:id/star", starSuggestion)
+	route.Get("/:id", getSuggestion)
 	route.Put("/:id/upvote", upvoteSuggestion)
+	route.Put("/:id/star", starSuggestion)
+	route.Patch("/:id/approve", approveSuggestion)
+	route.Patch("/:id/reject", rejectSuggestion)
+	route.Patch("/:id/report", reportSuggestion)
 	route.Use(isAuthorized)
 }
 
@@ -40,6 +42,17 @@ func isAuthorized(ctx *fiber.Ctx) error {
 	})
 }
 
+// getSuggestions godoc
+// @Summary Get All Suggestions
+// @Description Get all suggestions
+// @Tags suggestions
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Success 200 {array} library.SuggestionResponse
+// @Failure 401 {object} library.ErrorPayload
+// @Failure 500 {object} library.ErrorPayload
+// @Router /suggestions [get]
 func getSuggestions(c *fiber.Ctx) error {
 	user := c.Locals("user")
 	if user == nil {
@@ -57,58 +70,54 @@ func getSuggestions(c *fiber.Ctx) error {
 			"error":   err.Error(),
 		})
 	}
-
-	type suggest struct {
-		ID         string   `json:"id"`
-		Title      string   `json:"title"`
-		Content    string   `json:"content"`
-		Author     string   `json:"author"`
-		Upvotes    int      `json:"upvotes"`
-		Stars      float64  `json:"stars"`
-		Date       string   `json:"date"`
-		Tags       []string `json:"tags"`
-		Status     string   `json:"status"`
-		Starred    float64  `json:"starred"`
-		Voted      bool     `json:"voted"`
-		Department int      `json:"department"`
-	}
-	var response []suggest
+	var response []library.SuggestionResponse
 	for _, suggestion := range suggestions {
-		starred := 0.00
-		voted := false
-		/* if userType == "teacher" { */
-		for _, stars := range suggestion.Stars {
-			if stars.UserID == userID {
-				starred = stars.Star
-				voted = true
-				break
-			}
-		}
-		/* } else { */
-		for _, upvote := range suggestion.Upvotes {
-			if upvote == userID {
-				voted = true
-				break
-			}
-		}
-		/* } */
-		response = append(response, suggest{
-			ID:      suggestion.ID.Hex(),
-			Title:   suggestion.Title,
-			Content: suggestion.Content,
-			Author:  suggestion.AuthorID,
-			Upvotes: len(suggestion.Upvotes),
-			Stars:   suggestion.CalculateAverageStars(),
-			Date:    suggestion.Date,
-			Tags:    suggestion.Tags,
-			Status:  suggestion.Status,
-			Starred: starred,
-			Voted:   voted,
-		})
+		response = append(response, suggestion.ToResponse(userID))
 	}
 	return c.JSON(response)
 }
 
+// getSuggestion godoc
+// @Summary Get Suggestion
+// @Description Get a suggestion
+// @Tags suggestions
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param id path string true "Suggestion ID"
+// @Success 200 {object} library.SuggestionResponse
+// @Failure 401 {object} library.ErrorPayload
+// @Failure 500 {object} library.ErrorPayload
+// @Router /suggestions/{id} [get]
+func getSuggestion(c *fiber.Ctx) error {
+	user := c.Locals("user")
+	if user == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"message": "You are not logged in",
+		})
+	}
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	userID := claims["username"].(string)
+	suggestion := library.Suggestion{}
+	if err := suggestion.WithID(c.Params("id")); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Failed to get suggestion",
+			"error":   err.Error(),
+		})
+	}
+	response := suggestion.ToResponse(userID)
+	return c.JSON(response)
+}
+
+// createSuggestion godoc
+// @Summary Create Suggestion
+// @Description Create a suggestion
+// @Tags suggestions
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param suggestion body library.CreateSuggestionParams true "Suggestion"
+// @Success 200 {object} library.SuggestionResponse
 func createSuggestion(c *fiber.Ctx) error {
 	user := c.Locals("user")
 	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
@@ -142,9 +151,21 @@ func createSuggestion(c *fiber.Ctx) error {
 			"error":   err.Error(),
 		})
 	}
-	return getSuggestions(c)
+	return c.JSON(suggestion.ToResponse(userID))
 }
 
+// upvoteSuggestion godoc
+// @Summary Upvote Suggestion
+// @Description Upvote a suggestion
+// @Tags suggestions
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param id path string true "Suggestion ID"
+// @Success 200 {object} library.SuggestionResponse
+// @Failure 400 {object} library.ErrorPayload
+// @Failure 500 {object} library.ErrorPayload
+// @Router /suggestions/{id}/upvote [put]
 func upvoteSuggestion(c *fiber.Ctx) error {
 	user := c.Locals("user")
 	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
@@ -163,9 +184,22 @@ func upvoteSuggestion(c *fiber.Ctx) error {
 			"error":   err.Error(),
 		})
 	}
-	return c.JSON(suggestion)
+	return c.JSON(suggestion.ToResponse(userID))
 }
 
+// starSuggestion godoc
+// @Summary Star Suggestion
+// @Description Star a suggestion
+// @Tags suggestions
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param id path string true "Suggestion ID"
+// @Param star body library.StarSuggestionParams true "Star"
+// @Success 200 {object} library.SuggestionResponse
+// @Failure 400 {object} library.ErrorPayload
+// @Failure 500 {object} library.ErrorPayload
+// @Router /suggestions/{id}/star [put]
 func starSuggestion(c *fiber.Ctx) error {
 	type Params struct {
 		Star int `json:"star"`
@@ -200,15 +234,118 @@ func starSuggestion(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(suggestion)
+	return c.Status(fiber.StatusOK).JSON(suggestion.ToResponse(userID))
 }
 
-func GetDepartmentID(username string) int {
-	chars := strings.Split(username[3:], "")
-	id_slice := []string{}
-	for i := 0; i < len(chars)-3; i++ {
-		id_slice = append(id_slice, chars[i])
+// approveSuggestion godoc
+// @Summary Approve Suggestion
+// @Description Approve a suggestion
+// @Tags suggestions
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param id path string true "Suggestion ID"
+// @Success 200 {object} library.SuggestionResponse
+// @Failure 400 {object} library.ErrorPayload
+// @Failure 500 {object} library.ErrorPayload
+// @Router /suggestions/{id}/approve [patch]
+func approveSuggestion(c *fiber.Ctx) error {
+	user := c.Locals("user")
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	userID := claims["username"].(string)
+	suggestion := library.Suggestion{}
+	if suggestionID, err := primitive.ObjectIDFromHex(c.Params("id")); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "Invalid suggestion ID",
+		})
+	} else {
+		suggestion.ID = suggestionID
 	}
-	department, _ := strconv.Atoi(strings.Join(id_slice, ""))
-	return department
+	if err := suggestion.Approve(userID); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Failed to approve suggestion",
+			"error":   err.Error(),
+		})
+	}
+	return c.JSON(suggestion.ToResponse(userID))
+}
+
+// rejectSuggestion godoc
+// @Summary Reject Suggestion
+// @Description Reject a suggestion
+// @Tags suggestions
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param id path string true "Suggestion ID"
+// @Param reason body library.WithReasonParams true "Reason"
+// @Success 200 {object} library.SuggestionResponse
+// @Failure 400 {object} library.ErrorPayload
+// @Failure 500 {object} library.ErrorPayload
+// @Router /suggestions/{id}/reject [patch]
+func rejectSuggestion(c *fiber.Ctx) error {
+	user := c.Locals("user")
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	userID := claims["username"].(string)
+	suggestion := library.Suggestion{}
+	var params struct {
+		Reason string `json:"reason"`
+	}
+	if err := c.BodyParser(&params); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "Invalid request",
+		})
+	}
+	if params.Reason == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "Reason is required",
+		})
+	}
+	if suggestionID, err := primitive.ObjectIDFromHex(c.Params("id")); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "Invalid suggestion ID",
+		})
+	} else {
+		suggestion.ID = suggestionID
+	}
+	if err := suggestion.Reject(userID, params.Reason); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Failed to reject suggestion",
+			"error":   err.Error(),
+		})
+	}
+	return c.JSON(suggestion.ToResponse(userID))
+}
+
+// reportSuggestion godoc
+// @Summary Report Suggestion
+// @Description Report a suggestion
+// @Tags suggestions
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param id path string true "Suggestion ID"
+// @Success 200 {object} library.SuggestionResponse
+// @Failure 400 {object} library.ErrorPayload
+// @Failure 500 {object} library.ErrorPayload
+// @Router /suggestions/{id}/report [patch]
+func reportSuggestion(c *fiber.Ctx) error {
+	user := c.Locals("user")
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	userID := claims["username"].(string)
+	suggestion := library.Suggestion{}
+	if suggestionID, err := primitive.ObjectIDFromHex(c.Params("id")); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "Invalid suggestion ID",
+		})
+	} else {
+		suggestion.ID = suggestionID
+	}
+	if err := suggestion.Report(userID); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Failed to report suggestion",
+			"error":   err.Error(),
+		})
+	}
+	return c.JSON(suggestion.ToResponse(userID))
 }
