@@ -12,15 +12,18 @@ import (
 func init() {
 	route := pkg.App.Group("/suggestions")
 	pkg.UseJWT(route)
-	route.Post("/", createSuggestion)
-	route.Get("/", getSuggestions)
+	route.Get("/", getApprovedSuggestions)
 	route.Get("/:id", getSuggestion)
+	route.Post("/", createSuggestion)
 	route.Put("/:id/upvote", upvoteSuggestion)
+	route.Get("/rejected", getRejectedSuggestions)
+	route.Use(isAuthorized)
+	route.Get("/pending", getPendingSuggestions)
+	route.Get("/reported", getReportedSuggestions)
 	route.Put("/:id/star", starSuggestion)
 	route.Patch("/:id/approve", approveSuggestion)
 	route.Patch("/:id/reject", rejectSuggestion)
 	route.Patch("/:id/report", reportSuggestion)
-	route.Use(isAuthorized)
 }
 
 func isAuthorized(ctx *fiber.Ctx) error {
@@ -42,9 +45,9 @@ func isAuthorized(ctx *fiber.Ctx) error {
 	})
 }
 
-// getSuggestions godoc
-// @Summary Get All Suggestions
-// @Description Get all suggestions
+// getApprovedSuggestions godoc
+// @Summary Get Approved Suggestions
+// @Description Get Approved suggestions
 // @Tags suggestions
 // @Accept json
 // @Produce json
@@ -53,7 +56,7 @@ func isAuthorized(ctx *fiber.Ctx) error {
 // @Failure 401 {object} library.ErrorPayload
 // @Failure 500 {object} library.ErrorPayload
 // @Router /suggestions [get]
-func getSuggestions(c *fiber.Ctx) error {
+func getApprovedSuggestions(c *fiber.Ctx) error {
 	user := c.Locals("user")
 	if user == nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
@@ -63,7 +66,75 @@ func getSuggestions(c *fiber.Ctx) error {
 	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
 	userID := claims["username"].(string)
 	/* userType := claims["user_type"].(string) */
-	suggestions, err := library.GetSuggestions()
+	suggestions, err := library.GetApprovedSuggestions()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Failed to get suggestions",
+			"error":   err.Error(),
+		})
+	}
+	var response []library.SuggestionResponse
+	for _, suggestion := range suggestions {
+		response = append(response, suggestion.ToResponse(userID))
+	}
+	return c.JSON(response)
+}
+
+// getPendingSuggestions godoc
+// @Summary Get Pending Suggestions
+// @Description Get all pending suggestions
+// @Tags suggestions
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Success 200 {array} library.SuggestionResponse
+// @Failure 401 {object} library.ErrorPayload
+// @Failure 500 {object} library.ErrorPayload
+// @Router /suggestions/pending [get]
+func getPendingSuggestions(c *fiber.Ctx) error {
+	user := c.Locals("user")
+	if user == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"message": "You are not logged in",
+		})
+	}
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	userID := claims["username"].(string)
+	suggestions, err := library.GetPendingSuggestions()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Failed to get suggestions",
+			"error":   err.Error(),
+		})
+	}
+	var response []library.SuggestionResponse
+	for _, suggestion := range suggestions {
+		response = append(response, suggestion.ToResponse(userID))
+	}
+	return c.JSON(response)
+}
+
+// getReportedSuggestions godoc
+// @Summary Get Reported Suggestions
+// @Description Get all reported suggestions
+// @Tags suggestions
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Success 200 {array} library.SuggestionResponse
+// @Failure 401 {object} library.ErrorPayload
+// @Failure 500 {object} library.ErrorPayload
+// @Router /suggestions/reported [get]
+func getReportedSuggestions(c *fiber.Ctx) error {
+	user := c.Locals("user")
+	if user == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"message": "You are not logged in",
+		})
+	}
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	userID := claims["username"].(string)
+	suggestions, err := library.GetReportedSuggestions()
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": "Failed to get suggestions",
@@ -99,6 +170,9 @@ func getSuggestion(c *fiber.Ctx) error {
 	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
 	userID := claims["username"].(string)
 	suggestion := library.Suggestion{}
+	if c.Params("id") == "pending" || c.Params("id") == "reported" || c.Params("id") == "rejected" {
+		return c.Next()
+	}
 	if err := suggestion.WithID(c.Params("id")); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": "Failed to get suggestion",
@@ -152,6 +226,40 @@ func createSuggestion(c *fiber.Ctx) error {
 		})
 	}
 	return c.JSON(suggestion.ToResponse(userID))
+}
+
+// getRejectedSuggestions godoc
+// @Summary Get Rejected Suggestions
+// @Description Get all rejected suggestions
+// @Tags suggestions
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Success 200 {array} library.SuggestionResponse
+// @Failure 401 {object} library.ErrorPayload
+// @Failure 500 {object} library.ErrorPayload
+// @Router /suggestions/rejected [get]
+func getRejectedSuggestions(c *fiber.Ctx) error {
+	user := c.Locals("user")
+	if user == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"message": "You are not logged in",
+		})
+	}
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	userID := claims["username"].(string)
+	suggestions, err := library.GetRejectedSuggestions()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Failed to get suggestions",
+			"error":   err.Error(),
+		})
+	}
+	var response []library.SuggestionResponse
+	for _, suggestion := range suggestions {
+		response = append(response, suggestion.ToResponse(userID))
+	}
+	return c.JSON(response)
 }
 
 // upvoteSuggestion godoc

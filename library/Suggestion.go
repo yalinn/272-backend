@@ -276,16 +276,16 @@ func (s *Suggestion) CalculateAverageStars() float64 {
 	return average
 }
 
-func GetRejections() ([]Rejection, error) {
-	var rejections []Rejection
-	cursor, err := Rejections.Find(context.TODO(), bson.M{})
+func GetRejectedSuggestions() ([]Suggestion, error) {
+	var suggestions []Suggestion
+	cursor, err := Suggestions.Find(context.TODO(), bson.M{"status": "rejected"})
 	if err != nil {
-		return []Rejection{}, err
+		return []Suggestion{}, err
 	}
-	if err := cursor.All(context.TODO(), &rejections); err != nil {
-		return []Rejection{}, err
+	if err := cursor.All(context.TODO(), &suggestions); err != nil {
+		return []Suggestion{}, err
 	}
-	return rejections, nil
+	return suggestions, nil
 }
 
 func GetApprovedSuggestions() ([]Suggestion, error) {
@@ -300,9 +300,21 @@ func GetApprovedSuggestions() ([]Suggestion, error) {
 	return suggestions, nil
 }
 
-func GetSuggestions() ([]Suggestion, error) {
+func GetAllSuggestions() ([]Suggestion, error) {
 	var suggestions []Suggestion
 	cursor, err := Suggestions.Find(context.TODO(), bson.M{})
+	if err != nil {
+		return []Suggestion{}, err
+	}
+	if err := cursor.All(context.TODO(), &suggestions); err != nil {
+		return []Suggestion{}, err
+	}
+	return suggestions, nil
+}
+
+func GetPendingSuggestions() ([]Suggestion, error) {
+	var suggestions []Suggestion
+	cursor, err := Suggestions.Find(context.TODO(), bson.M{"status": "pending"})
 	if err != nil {
 		return []Suggestion{}, err
 	}
