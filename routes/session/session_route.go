@@ -18,6 +18,17 @@ func init() {
 	sessionRoutes.Delete("/", logout)
 }
 
+// getSession godoc
+// @Summary Get user session
+// @Description Get user session
+// @Tags session
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Success 200 {array} library.User
+// @Failure 401 {object} library.ErrorPayload
+// @Failure 500 {object} library.ErrorPayload
+// @Router /session [get]
 func getSession(c *fiber.Ctx) error {
 	auth := c.Locals("user")
 	if auth == nil {
@@ -41,11 +52,12 @@ func getSession(c *fiber.Ctx) error {
 			"error":   err.Error(),
 		})
 	}
-	return c.JSON(fiber.Map{
+	return c.Status(200).JSON(fiber.Map{
 		"user": fiber.Map{
-			"username":  user.Username,
-			"user_type": user.UserType,
-			"roles":     user.Roles,
+			"username":   user.Username,
+			"user_type":  user.UserType,
+			"roles":      user.Roles,
+			"department": user.GetDepartmentID(),
 		},
 	})
 }

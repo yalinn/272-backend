@@ -192,6 +192,7 @@ func getSuggestion(c *fiber.Ctx) error {
 // @Security Bearer
 // @Param suggestion body library.CreateSuggestionParams true "Suggestion"
 // @Success 200 {object} library.SuggestionResponse
+// @Router /suggestions [post]
 func createSuggestion(c *fiber.Ctx) error {
 	user := c.Locals("user")
 	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
