@@ -3,11 +3,14 @@ package library
 import (
 	"272-backend/config"
 	"272-backend/pkg"
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"io"
 	"log"
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -26,13 +29,14 @@ func init() {
 
 type User struct {
 	Username   string   `json:"id,omitempty" bson:"_id,omitempty"`
+	FullName   string   `json:"full_name" bson:"full_name"`
 	UserType   string   `json:"user_type" bson:"user_type"`
 	Roles      []string `json:"roles" bson:"roles"`
 	Department int      `json:"department" bson:"department"`
 }
 
 func (u *User) GetDepartmentID() int {
-	chars := strings.Split(u.Username[3:], "")
+	chars := strings.Split(u.Username[4:], "")
 	id_slice := []string{}
 	for i := 0; i < len(chars)-3; i++ {
 		id_slice = append(id_slice, chars[i])
@@ -45,13 +49,10 @@ func (u *User) InsertToDB() error {
 	if u.Username == "" || u.UserType == "" {
 		return errors.New("INVALID_USER")
 	}
-	user := bson.M{
-		"_id":        u.Username,
-		"user_type":  u.UserType,
-		"roles":      []string{u.UserType},
-		"department": u.GetDepartmentID(),
-	}
-	if _, err := Users.InsertOne(context.TODO(), user); err != nil {
+	u.Roles = append(u.Roles, u.UserType)
+	u.Department = u.GetDepartmentID()
+
+	if _, err := Users.InsertOne(context.TODO(), u); err != nil {
 		return err
 	}
 	if err := Users.FindOne(context.TODO(), bson.M{"_id": u.Username}).Decode(&u); err != nil {
@@ -112,13 +113,72 @@ func (u *User) LoginByEmail(pwd string) error {
 	}
 	defer Imap.Logout()
 	username := u.Username
+	if u.UserType == "student" && strings.Contains(username, "@") {
+		username = strings.Split(username, "@")[0]
+	}
 	if err := Imap.Login(username, pwd); err != nil {
 		return err
+	}
+	if u.UserType == "student" && username[0] == 'c' {
+		username = "20" + username[1:]
 	}
 	defer Imap.Logout()
 	u.Username = username
 	if err := u.GetByUsername(); err != nil {
 		u.InsertToDB()
+	}
+	// Eğer test edecekseniz bu kısmı kaldırın
+	if u.FullName == "" {
+		if err := u.getPersonalInfo(pwd); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Eğer test edecekseniz bu kısmı kaldırın
+type personalInfo struct {
+	FullName string `json:"name"`
+}
+
+// Eğer test edecekseniz bu kısmı kaldırın
+func (u *User) getPersonalInfo(pwd string) error {
+	postData := map[string]string{
+		"username": u.Username,
+		"password": pwd,
+	}
+	jsonData, err := json.Marshal(postData)
+	if err != nil {
+		return err
+	}
+	response, err := http.Post(config.BSL_URI+"/profile", "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return err
+	}
+
+	var info personalInfo
+	err = json.Unmarshal(body, &info)
+	if err != nil {
+		return err
+	}
+	update := bson.M{
+		"$set": bson.M{
+			"full_name": info.FullName,
+		},
+	}
+	query := bson.M{
+		"_id": u.Username,
+	}
+	if _, err := Users.UpdateOne(context.TODO(), query, update); err != nil {
+		return err
+	}
+	if err := Users.FindOne(context.TODO(), bson.M{"_id": u.Username}).Decode(&u); err != nil {
+		return err
 	}
 	return nil
 }

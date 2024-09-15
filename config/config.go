@@ -14,6 +14,7 @@ var (
 	REDIRECT_URI   string
 	JWT_SECRET_KEY string
 	PORT           string = ":3000"
+	BSL_URI        string
 )
 
 var (
@@ -34,7 +35,7 @@ func init() {
 	REDIRECT_URI = os.Getenv("REDIRECT_URI")
 	JWT_SECRET_KEY = os.Getenv("JWT_SECRET_KEY")
 	PORT = os.Getenv("PORT")
-
+	BSL_URI = os.Getenv("BSL_URI")
 	IMAP_S_HOST = os.Getenv("IMAP_S_HOST")
 	IMAP_T_HOST = os.Getenv("IMAP_T_HOST")
 	IMAP_PORT = os.Getenv("IMAP_PORT")
