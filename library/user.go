@@ -119,8 +119,8 @@ func (u *User) LoginByEmail(pwd string) error {
 	if err := Imap.Login(username, pwd); err != nil {
 		return err
 	}
-	if u.UserType == "student" && username[0] == 'c' {
-		username = "20" + username[1:]
+	if u.UserType == "student" && username[0] != 'c' {
+		username = "c" + username
 	}
 	defer Imap.Logout()
 	u.Username = username
