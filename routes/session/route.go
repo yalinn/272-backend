@@ -68,6 +68,18 @@ type loginForm struct {
 	UserType string `json:"user_type"`
 }
 
+// login godoc
+// @Summary Login
+// @Description Login
+// @Tags session
+// @Accept json
+// @Produce json
+// @Param body body loginForm true "Login Form"
+// @Success 200 {object} library.User
+// @Failure 400 {object} library.ErrorPayload
+// @Failure 401 {object} library.ErrorPayload
+// @Failure 500 {object} library.ErrorPayload
+// @Router /session [post]
 func login(c *fiber.Ctx) error {
 	var form loginForm
 	if err := c.BodyParser(&form); err != nil {
@@ -112,6 +124,17 @@ func login(c *fiber.Ctx) error {
 	})
 }
 
+// logout godoc
+// @Summary Logout
+// @Description Logout
+// @Tags session
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Success 204
+// @Failure 401 {object} library.ErrorPayload
+// @Failure 500 {object} library.ErrorPayload
+// @Router /session [delete]
 func logout(c *fiber.Ctx) error {
 	auth := c.Locals("user")
 	if auth == nil {
