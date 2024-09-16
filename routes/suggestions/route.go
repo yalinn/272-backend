@@ -17,7 +17,7 @@ func init() {
 	route.Post("/", createSuggestion)
 	route.Put("/:id/upvote", upvoteSuggestion)
 	route.Get("/rejected", getRejectedSuggestions)
-	route.Use(isAuthorized)
+	route.Use(isAdmin)
 	route.Get("/pending", getPendingSuggestions)
 	route.Get("/reported", getReportedSuggestions)
 	route.Put("/:id/star", starSuggestion)
@@ -26,7 +26,7 @@ func init() {
 	route.Patch("/:id/report", reportSuggestion)
 }
 
-func isAuthorized(ctx *fiber.Ctx) error {
+func isAdmin(ctx *fiber.Ctx) error {
 	user := ctx.Locals("user")
 	if user == nil {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
