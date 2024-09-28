@@ -79,12 +79,18 @@ func postCurriculum(c *fiber.Ctx) error {
 	}
 	response, err := http.Post(config.BSL_URI+"/curriculum", "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
-		return err
+		return c.Status(500).JSON(fiber.Map{
+			"message": "Failed to post curriculum",
+			"error":   err.Error(),
+		})
 	}
 	defer response.Body.Close()
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		return err
+		return c.Status(500).JSON(fiber.Map{
+			"message": "Failed to read response body",
+			"error":   err.Error(),
+		})
 	}
 	var info []CurriculumObject
 	err = json.Unmarshal(body, &info)
