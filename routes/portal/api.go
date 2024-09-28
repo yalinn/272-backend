@@ -8,7 +8,7 @@ type GetResponse struct {
 	Message string `json:"message"`
 }
 
-type CirriculumObject struct {
+type CurriculumObject struct {
 	Code       string `json:"code"`
 	CourseID   string `json:"course_id"`
 	CourseCode string `json:"course_code"`

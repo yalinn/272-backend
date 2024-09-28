@@ -15,22 +15,22 @@ import (
 func init() {
 	router := pkg.App.Group("/portal")
 	pkg.UseJWT(router)
-	router.Get("/cirriculum", getCirriculum)
-	router.Post("/cirriculum", postCirriculum)
+	router.Get("/curriculum", getCurriculum)
+	router.Post("/curriculum", postCurriculum)
 }
 
-// getCirriculum godoc
-// @Summary Get cirriculum
-// @Description Get cirriculum
+// getCurriculum godoc
+// @Summary Get curriculum
+// @Description Get curriculum
 // @Tags portal
 // @Accept json
 // @Produce json
 // @Security Bearer
 // @Success 200 {object} GetResponse
-// @Router /portal/cirriculum [get]
-func getCirriculum(c *fiber.Ctx) error {
+// @Router /portal/curriculum [get]
+func getCurriculum(c *fiber.Ctx) error {
 	return c.Status(200).JSON(fiber.Map{
-		"message": "Cirriculum",
+		"message": "Curriculum",
 	})
 }
 
@@ -38,17 +38,17 @@ type postBody struct {
 	Password string `json:"password"`
 }
 
-// postCirriculum godoc
-// @Summary Post cirriculum
-// @Description Post cirriculum
+// postCurriculum godoc
+// @Summary Post curriculum
+// @Description Post curriculum
 // @Tags portal
 // @Accept json
 // @Produce json
 // @Security Bearer
 // @Param body body postBody true "Body"
 // @Success 200 {object} PostResponse
-// @Router /portal/cirriculum [post]
-func postCirriculum(c *fiber.Ctx) error {
+// @Router /portal/curriculum [post]
+func postCurriculum(c *fiber.Ctx) error {
 	data := new(postBody)
 	if err := c.BodyParser(data); err != nil {
 		return c.Status(400).JSON(fiber.Map{
@@ -86,7 +86,7 @@ func postCirriculum(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	var info []CirriculumObject
+	var info []CurriculumObject
 	err = json.Unmarshal(body, &info)
 	if err != nil {
 		return err
