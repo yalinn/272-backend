@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"log"
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
@@ -93,7 +92,6 @@ func postCurriculum(c *fiber.Ctx) error {
 			"error":   err.Error(),
 		})
 	}
-	log.Println(string(body))
 	var info []CurriculumObject
 	err = json.Unmarshal(body, &info)
 	if err != nil {
