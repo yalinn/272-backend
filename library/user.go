@@ -28,11 +28,18 @@ func init() {
 }
 
 type User struct {
-	Username   string   `json:"id,omitempty" bson:"_id,omitempty"`
-	FullName   string   `json:"full_name" bson:"full_name"`
-	UserType   string   `json:"user_type" bson:"user_type"`
-	Roles      []string `json:"roles" bson:"roles"`
-	Department int      `json:"department" bson:"department"`
+	Username       string   `json:"id,omitempty" bson:"_id,omitempty"`
+	FullName       string   `json:"full_name" bson:"full_name"`
+	UserType       string   `json:"user_type" bson:"user_type"`
+	Roles          []string `json:"roles" bson:"roles"`
+	Department     int      `json:"department" bson:"department"`
+	DepartmentName string   `json:"department_name" bson:"department_name"`
+	Department_alt string   `json:"department_alt"`
+	Cirriculum     string   `json:"cirriculum" bson:"cirriculum"`
+	Faculty        string   `json:"faculty" bson:"faculty"`
+	Advisor        string   `json:"advisor" bson:"advisor"`
+	Rank           int      `json:"rank" bson:"rank"`
+	Year           string   `json:"year"`
 }
 
 func (u *User) GetDepartmentID() int {
@@ -128,8 +135,9 @@ func (u *User) LoginByEmail(pwd string) error {
 		u.InsertToDB()
 	}
 	// Eğer test edecekseniz bu kısmı kaldırın
-	if u.FullName == "" {
-		if err := u.getPersonalInfo(pwd); err != nil {
+	// TODO: Remove this part and use mongodb browserless
+	if u.FullName == "" || u.DepartmentName == "" || u.Faculty == "" || u.Advisor == "" || u.Cirriculum == "" {
+		if err := u.fetchPersonalInfo(pwd); err != nil {
 			return err
 		}
 	}
@@ -138,11 +146,18 @@ func (u *User) LoginByEmail(pwd string) error {
 
 // Eğer test edecekseniz bu kısmı kaldırın
 type personalInfo struct {
-	FullName string `json:"name"`
+	FullName       string `json:"name"`
+	Year           string `json:"year"`
+	Faculty        string `json:"faculty"`
+	Department_alt string `json:"department_alt"`
+	DepartmentName string `json:"department"`
+	Cirriculum     string `json:"department_info"`
+	Advisor        string `json:"advisor"`
+	Rank           string `json:"rank"`
 }
 
 // Eğer test edecekseniz bu kısmı kaldırın
-func (u *User) getPersonalInfo(pwd string) error {
+func (u *User) fetchPersonalInfo(pwd string) error {
 	postData := map[string]string{
 		"username": u.Username,
 		"password": pwd,
@@ -168,7 +183,14 @@ func (u *User) getPersonalInfo(pwd string) error {
 	}
 	update := bson.M{
 		"$set": bson.M{
-			"full_name": info.FullName,
+			"full_name":       info.FullName,
+			"year":            info.Year,
+			"department_alt":  info.Department_alt,
+			"department_name": info.DepartmentName,
+			"faculty":         info.Faculty,
+			"advisor":         info.Advisor,
+			"cirriculum":      info.Cirriculum,
+			"rank":            info.Rank,
 		},
 	}
 	query := bson.M{

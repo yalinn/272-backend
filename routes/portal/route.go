@@ -29,13 +29,23 @@ func init() {
 // @Success 200 {object} GetResponse
 // @Router /portal/curriculum [get]
 func getCurriculum(c *fiber.Ctx) error {
+	user := c.Locals("user")
+	if user == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"message": "You are not logged in",
+		})
+	}
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	userID := claims["username"].(string)
+	if userID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"message": "Authentication token is invalid or expired",
+		})
+	}
+
 	return c.Status(200).JSON(fiber.Map{
 		"message": "Curriculum",
 	})
-}
-
-type postBody struct {
-	Password string `json:"password"`
 }
 
 // postCurriculum godoc
@@ -45,11 +55,11 @@ type postBody struct {
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param body body postBody true "Body"
-// @Success 200 {object} PostResponse
+// @Param body body fetchCirriculumParams true "Body"
+// @Success 200 {object} []CurriculumObject
 // @Router /portal/curriculum [post]
 func postCurriculum(c *fiber.Ctx) error {
-	data := new(postBody)
+	data := new(fetchCirriculumParams)
 	if err := c.BodyParser(data); err != nil {
 		return c.Status(400).JSON(fiber.Map{
 			"message": "Invalid request",
