@@ -38,7 +38,7 @@ type User struct {
 	Cirriculum     string   `json:"cirriculum" bson:"cirriculum"`
 	Faculty        string   `json:"faculty" bson:"faculty"`
 	Advisor        string   `json:"advisor" bson:"advisor"`
-	Rank           int      `json:"rank" bson:"rank"`
+	Rank           string   `json:"rank" bson:"rank"`
 	Year           string   `json:"year"`
 }
 
