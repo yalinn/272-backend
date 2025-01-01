@@ -43,7 +43,7 @@ type User struct {
 }
 
 func (u *User) GetDepartmentID() int {
-	chars := strings.Split(u.Username[4:], "")
+	chars := strings.Split(u.Username[3:], "")
 	id_slice := []string{}
 	for i := 0; i < len(chars)-3; i++ {
 		id_slice = append(id_slice, chars[i])
