@@ -14,6 +14,9 @@ type GetResponse struct {
 type fetchCirriculumParams struct {
 	Password string `json:"password"`
 }
+type BSLparams struct {
+	Password string `json:"password"`
+}
 
 type CurriculumObject struct {
 	Code       string `json:"code"`
