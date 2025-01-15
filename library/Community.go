@@ -14,10 +14,15 @@ type Community struct {
 	CreatedAt   time.Time          `json:"created_at" bson:"created_at"`
 }
 
-type Role int
+type Role struct {
+	ID    primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
+	Name  string             `json:"name" bson:"name"`
+	Allow []string           `json:"allow" bson:"allow"`
+	Deny  []string           `json:"deny" bson:"deny"`
+}
 
 type CommunityMember struct {
 	ID       string `json:"id,omitempty" bson:"_id,omitempty"`
 	MemberID string `json:"member_id" bson:"member_id"`
-	Role     int    `json:"role" bson:"role"`
+	Roles    []Role `json:"roles" bson:"roles"`
 }
