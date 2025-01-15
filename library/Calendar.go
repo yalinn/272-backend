@@ -4,6 +4,7 @@ import (
 	"272-backend/pkg"
 	"context"
 	"errors"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -24,6 +25,8 @@ type Event struct {
 	EndTime     primitive.DateTime `json:"end_time" bson:"end_time"`
 	Location    string             `json:"location" bson:"location"`
 	OrganizerID string             `json:"organizer_id" bson:"organizer_id"`
+	Author      string             `json:"author" bson:"author"`
+	CreatedAt   primitive.DateTime `json:"created_at" bson:"created_at"`
 	Tags        []string           `json:"tags" bson:"tags"`
 	Status      string             `json:"status" bson:"status"`
 	Type        string             `json:"type" bson:"type"`
@@ -36,7 +39,15 @@ func (e *Event) CreateEvent() error {
 	if e.OrganizerID == "" {
 		return errors.New("INVALID_ORGANIZER")
 	}
+	if e.Author == "" {
+		return errors.New("INVALID_ORGANIZER_NAME")
+	}
 	e.Status = "pending"
+	date, err := time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
+	if err != nil {
+		return err
+	}
+	e.CreatedAt = primitive.NewDateTimeFromTime(date)
 	if e.StartTime.Time().IsZero() {
 		return errors.New("INVALID_START_TIME")
 	}
@@ -100,7 +111,7 @@ func GetAllEvents() ([]Event, error) {
 }
 
 func GetPendingEvents() ([]Event, error) {
-	cursor, err := Events.Find(context.Background(), bson.D{{Key: "status", Value: "pending"}})
+	cursor, err := Events.Find(context.Background(), bson.D{{}})
 	if err != nil {
 		return nil, err
 	}

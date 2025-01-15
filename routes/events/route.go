@@ -110,6 +110,12 @@ func postEvent(c *fiber.Ctx) error {
 			"message": "Authentication token is invalid or expired",
 		})
 	}
+	IUser := library.User{Username: userID, UserType: "student"}
+	if err := IUser.FindUser(); err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"message": "Failed to find user",
+		})
+	}
 	startTime, err := time.Parse(time.RFC3339, params.StartTime)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -121,6 +127,7 @@ func postEvent(c *fiber.Ctx) error {
 		StartTime:   primitive.NewDateTimeFromTime(startTime),
 		Type:        "haysev",
 		OrganizerID: userID,
+		Author:      IUser.FullName,
 	}
 	if err := event.CreateEvent(); err != nil {
 		return c.Status(500).JSON(fiber.Map{
